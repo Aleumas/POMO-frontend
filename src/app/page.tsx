@@ -12,8 +12,14 @@ export default function Page() {
     const socket = io(process.env.SOCKET_SERVER_URL || "http://localhost:3000");
     setSocket(socket);
 
+    socket.emit("create-room");
+
     socket.on("update-timer", (time: number) => {
       updateSeconds(time);
+    });
+
+    socket.on("room-created", (room: string) => {
+      console.log("room created: ", room);
     });
 
     return () => {
@@ -27,7 +33,7 @@ export default function Page() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          socket?.emit("start", startTime);
+          socket?.emit("start-timer", startTime);
         }}
       >
         <input
