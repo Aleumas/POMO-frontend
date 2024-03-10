@@ -12,14 +12,14 @@ import {
 import { socket } from "@/socket";
 import { toast } from "sonner";
 import ParticipantCard from "@/components/ui/participant-card";
-import { TimerMode } from "@/types";
 
 export default () => {
   const { user, isLoading } = useUser();
   const [isSocketConnected, setSocketConnectionState] = useState(false);
   const [sessionPreset, setSessionPreset] = useState(25);
   const [breakPreset, setBreakPreset] = useState(5);
-  const [otherParticipants, setOtherParticipants] = useState<string[]>([]);
+  const [otherParticipants, setOtherParticipants] = useState([]);
+  let room = "room";
 
   useEffect(() => {
     socket.connect();
@@ -30,22 +30,45 @@ export default () => {
 
   useEffect(() => {
     if (!isLoading && user && !isSocketConnected) {
-      socket.emit("joinRoom", "room", user.name, user.sub);
+      socket.emit("joinRoom", room, user.name, user.sub);
 
       socket.on("showToast", (message) => {
         toast(message);
       });
-      socket.on("addParticipant", (participant) => {
-        setOtherParticipants((participants) => [...participants, participant]);
+      socket.on("addParticipant", (participant, socketId) => {
+        setOtherParticipants((participants) => [
+          ...participants,
+          { participant: participant, socketId: socketId },
+        ]);
       });
       socket.on("removeParticipant", (participant) => {
         setOtherParticipants((participants) =>
-          participants.filter((p) => p !== participant),
+          participants.filter((p) => p.participant !== participant),
         );
       });
       socket.on("addExistingParticipants", (existingParticipants) => {
         setOtherParticipants(existingParticipants);
       });
+      socket.on(
+        "syncRequest",
+        (targetSocketId, participantId, participantDisplayName) => {
+          toast(`${participantDisplayName} would like to sync timers`, {
+            description: `syncing will give ${participantDisplayName} control over the timer`,
+            action: {
+              label: "accept",
+              onClick: () => {
+                socket.emit(
+                  "syncAcceptance",
+                  room,
+                  user.sub,
+                  targetSocketId,
+                  participantId,
+                );
+              },
+            },
+          });
+        },
+      );
 
       setSocketConnectionState(socket.connected);
     }
@@ -94,16 +117,20 @@ export default () => {
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel defaultSize={20}>
-            {otherParticipants.map((participant, index) => (
-              <>
-                <ParticipantCard
-                  participant={participant}
-                  preset={sessionPreset}
-                  avatar={user.picture}
-                  key={index}
-                />
-              </>
-            ))}
+            {otherParticipants.map(({ participant, socketId }, index) => {
+              return (
+                <>
+                  <ParticipantCard
+                    participant={participant}
+                    participantSocket={socketId}
+                    preset={sessionPreset}
+                    avatar={user.picture}
+                    room={room}
+                    key={index}
+                  />
+                </>
+              );
+            })}
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
