@@ -1,5 +1,5 @@
 import { socket } from "@/socket";
-import { useEffect, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
 export default ({
   size,

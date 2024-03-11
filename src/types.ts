@@ -1,5 +1,10 @@
 export enum TimerMode {
-  "idle",
   "work",
-  "beak",
+  "break",
+}
+
+export enum TimerMachineState {
+  "idle",
+  "running",
+  "paused",
 }
