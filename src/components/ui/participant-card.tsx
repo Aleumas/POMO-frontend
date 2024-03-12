@@ -1,24 +1,15 @@
 import ClockFace from "./clock-face";
-import { TimerMode } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { socket } from "@/socket";
 import {
   ContextMenu,
-  ContextMenuCheckboxItem,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuLabel,
-  ContextMenuRadioGroup,
-  ContextMenuRadioItem,
-  ContextMenuSeparator,
-  ContextMenuShortcut,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { useUser } from "@auth0/nextjs-auth0/client";
+import { TimerMachineState } from "@/components/session-machine";
 
 export default ({
   participant,
@@ -34,16 +25,15 @@ export default ({
   room: string;
 }) => {
   const { user, isLoading } = useUser();
-  const [mode, setMode] = useState<TimerMode>(TimerMode.idle);
+  const [mode, setMode] = useState<TimerMachineState>(TimerMachineState.idle);
   const [inSync, setSyncStatus] = useState(false);
 
   useEffect(() => {
-    socket.on(`modeUpdate:${participant}`, (newMode) => {
-      setMode(newMode);
+    socket.on(`timerModeUpdate:${participant}`, (mode) => {
+      setMode(mode);
     });
 
     socket.on("syncStatusUpdate", (status) => {
-      console.log("status: ", status);
       setSyncStatus(status);
     });
 
@@ -98,6 +88,6 @@ export default ({
 
 const modeBorderColor = {
   idle: "border-zinc-300",
-  work: "border-orange-800",
-  beak: "border-emerald-800",
+  running: "border-orange-800",
+  paused: "border-emerald-800",
 };

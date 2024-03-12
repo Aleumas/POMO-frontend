@@ -13,20 +13,28 @@ import { socket } from "@/socket";
 import { toast } from "sonner";
 import ParticipantCard from "@/components/ui/participant-card";
 import { useMachine } from "@xstate/react";
-import TimerMachine, {
+import SessionMachine, {
   TimerMachineState,
   TimerMachineTransition,
-} from "@/components/timer-machine";
+  SessionMachineState,
+  SessionMachineTransition,
+} from "@/components/session-machine";
 
 export default () => {
   const { user, isLoading } = useUser();
   const [isSocketConnected, setSocketConnectionState] = useState(false);
-  const [sessionPreset, setSessionPreset] = useState(25);
+  const [workPreset, setWorkPreset] = useState(25);
   const [breakPreset, setBreakPreset] = useState(5);
   const [otherParticipants, setOtherParticipants] = useState([]);
+  const [sessionMode, sessionModeUpdate] = useState<SessionMachineState>(
+    SessionMachineState.work,
+  );
   let room = "room";
 
-  const [current, send] = useMachine(TimerMachine);
+  const [current, send] = useMachine(SessionMachine);
+  const currentPreset = (): number => {
+    return sessionMode == SessionMachineState.work ? workPreset : breakPreset;
+  };
 
   useEffect(() => {
     socket.connect();
@@ -54,6 +62,18 @@ export default () => {
         setOtherParticipants((participants) =>
           participants.filter((p) => p.participant !== participant),
         );
+      });
+
+      socket.on(`sessionModeUpdate:${user.sub}`, (mode) => {
+        console.log("mode: ", mode);
+        if (mode === SessionMachineState.work) {
+          send({ type: SessionMachineTransition.work });
+          sessionModeUpdate(SessionMachineState.work);
+        } else {
+          console.log("break");
+          send({ type: SessionMachineTransition.break });
+          sessionModeUpdate(SessionMachineState.break);
+        }
       });
 
       socket.on("addExistingParticipants", (existingParticipants) => {
@@ -100,15 +120,16 @@ export default () => {
               <ClockFace
                 size="text-8xl"
                 participantId={user?.sub}
-                preset={sessionPreset}
+                preset={currentPreset()}
               />
-              {current.value === TimerMachineState.idle && (
+              {current.value[sessionMode] === TimerMachineState.idle && (
                 <Button
                   onClick={() =>
                     send({
                       type: TimerMachineTransition.start,
                       participantId: user.sub,
-                      preset: sessionPreset,
+                      preset: currentPreset(),
+                      currentSessionMode: sessionMode,
                     })
                   }
                   disabled={!isSocketConnected}
@@ -117,14 +138,15 @@ export default () => {
                 </Button>
               )}
 
-              {(current.value === TimerMachineState.running ||
-                current.value == TimerMachineState.paused) && (
+              {(current.value[sessionMode] === TimerMachineState.running ||
+                current.value[sessionMode] == TimerMachineState.paused) && (
                 <div className="flex justify-center gap-5">
-                  {current.value == TimerMachineState.running && (
+                  {current.value[sessionMode] == TimerMachineState.running && (
                     <Button
                       onClick={() =>
                         send({
                           type: TimerMachineTransition.pause,
+                          currentSessionMode: sessionMode,
                           participantId: user.sub,
                         })
                       }
@@ -134,7 +156,7 @@ export default () => {
                     </Button>
                   )}
 
-                  {current.value == TimerMachineState.paused && (
+                  {current.value[sessionMode] == TimerMachineState.paused && (
                     <Button
                       onClick={() =>
                         send({
@@ -152,6 +174,7 @@ export default () => {
                     onClick={() =>
                       send({
                         type: TimerMachineTransition.stop,
+                        currentSessionMode: sessionMode,
                         participantId: user.sub,
                       })
                     }
@@ -161,20 +184,24 @@ export default () => {
                   </Button>
                 </div>
               )}
-              <NumberInput
-                label="session"
-                value={sessionPreset}
-                onChange={(newValue) => {
-                  setSessionPreset(newValue);
-                }}
-              />
-              <NumberInput
-                label="break"
-                value={breakPreset}
-                onChange={(newValue) => {
-                  setBreakPreset(newValue);
-                }}
-              />
+              {current.value[sessionMode] === TimerMachineState.idle && (
+                <div>
+                  <NumberInput
+                    label="session"
+                    value={workPreset}
+                    onChange={(newValue) => {
+                      setWorkPreset(newValue);
+                    }}
+                  />
+                  <NumberInput
+                    label="break"
+                    value={breakPreset}
+                    onChange={(newValue) => {
+                      setBreakPreset(newValue);
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
@@ -185,7 +212,6 @@ export default () => {
                   <ParticipantCard
                     participant={participant}
                     participantSocket={socketId}
-                    preset={sessionPreset}
                     avatar={user.picture}
                     room={room}
                     key={index}

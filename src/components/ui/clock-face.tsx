@@ -1,9 +1,9 @@
 import { socket } from "@/socket";
-import { Dispatch, SetStateAction, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default ({
   size,
-  preset,
+  preset = 0,
   participantId,
 }: {
   size: string;
@@ -11,6 +11,10 @@ export default ({
   participantId?: string;
 }) => {
   const [time, setTime] = useState(secondsToTime(preset));
+
+  useEffect(() => {
+    socket.emit("updateTimer", preset, participantId);
+  }, [preset]);
 
   useEffect(() => {
     socket.on(`timeUpdate:${participantId}`, (secondsRemaining) => {
