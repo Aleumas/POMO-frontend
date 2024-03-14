@@ -64,15 +64,46 @@ export default () => {
         );
       });
 
-      socket.on(`sessionModeUpdate:${user.sub}`, (mode) => {
-        console.log("mode: ", mode);
-        if (mode === SessionMachineState.work) {
+      socket.on(`syncSessionState:${user.sub}`, (sessionMode, timerMode) => {
+        if (sessionMode === SessionMachineState.work) {
           send({ type: SessionMachineTransition.work });
-          sessionModeUpdate(SessionMachineState.work);
+          updateSessionMode(SessionMachineState.work);
         } else {
-          console.log("break");
           send({ type: SessionMachineTransition.break });
-          sessionModeUpdate(SessionMachineState.break);
+          updateSessionMode(SessionMachineState.break);
+        }
+
+        switch (timerMode) {
+          case TimerMachineState.running:
+            if (current.value[sessionMode] == TimerMachineState.idle) {
+              send({
+                type: TimerMachineTransition.start,
+                participantId: user.sub,
+                preset: currentPreset(),
+                currentSessionMode: sessionMode,
+              });
+            } else {
+              send({
+                type: TimerMachineTransition.resume,
+                participantId: user.sub,
+                preset: currentPreset(),
+                currentSessionMode: sessionMode,
+              });
+            }
+          case TimerMachineState.paused:
+            send({
+              type: TimerMachineTransition.pause,
+              participantId: user.sub,
+              preset: currentPreset(),
+              currentSessionMode: sessionMode,
+            });
+          case TimerMachineState.idle:
+            send({
+              type: TimerMachineTransition.stop,
+              participantId: user.sub,
+              preset: currentPreset(),
+              currentSessionMode: sessionMode,
+            });
         }
       });
 
