@@ -10,15 +10,15 @@ export default ({
   preset: number;
   participantId?: string;
 }) => {
-  const [time, setTime] = useState(secondsToTime(preset));
+  const [time, setTime] = useState(secondsToTime(preset * 60));
 
   useEffect(() => {
-    socket.emit("updateTimer", preset, participantId);
+    socket.emit("updateTimer", preset * 60, participantId);
   }, [preset]);
 
   useEffect(() => {
-    socket.on(`timeUpdate:${participantId}`, (secondsRemaining) => {
-      setTime(secondsToTime(secondsRemaining));
+    socket.on(`timeUpdate:${participantId}`, (time) => {
+      setTime(secondsToTime(time));
     });
 
     return () => {

@@ -95,22 +95,18 @@ const SessionMachine = createMachine(
           "startTimer",
           context.event.participantId,
           context.event.preset,
-          context.event.currentSessionMode,
+          context.event.transition,
         );
       },
       stopTimer: (context) => {
         socket.emit(
           "stopTimer",
-          context.event.currentSessionMode,
           context.event.participantId,
+          context.event.transition,
         );
       },
       pauseTimer: (context) => {
-        socket.emit(
-          "pauseTimer",
-          context.event.currentSessionMode,
-          context.event.participantId,
-        );
+        socket.emit("pauseTimer", context.event.participantId);
       },
       resumeTimer: (context) => {
         socket.emit("resumeTimer", context.event.participantId);

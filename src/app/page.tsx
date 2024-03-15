@@ -26,15 +26,19 @@ export default () => {
   const [workPreset, setWorkPreset] = useState(25);
   const [breakPreset, setBreakPreset] = useState(5);
   const [otherParticipants, setOtherParticipants] = useState([]);
-  const [sessionMode, sessionModeUpdate] = useState<SessionMachineState>(
-    SessionMachineState.work,
-  );
   let room = "room";
 
-  const [current, send] = useMachine(SessionMachine);
-  const currentPreset = (): number => {
-    return sessionMode == SessionMachineState.work ? workPreset : breakPreset;
-  };
+  const [snapshot, send] = useMachine(SessionMachine);
+  const currentTimerMachineState = Object.values(snapshot.value)[0];
+  const currentSessionMachineState = Object.keys(snapshot.value)[0];
+  const nextTransition =
+    currentSessionMachineState == SessionMachineState.work
+      ? SessionMachineTransition.break
+      : SessionMachineTransition.work;
+  const currentPreset =
+    currentSessionMachineState == SessionMachineState.work
+      ? workPreset
+      : breakPreset;
 
   useEffect(() => {
     socket.connect();
@@ -63,79 +67,19 @@ export default () => {
         chime.play();
       });
 
+      socket.on(`machineTransition:${user.sub}`, (transition) => {
+        send({ type: transition });
+      });
+
       socket.on("removeParticipant", (participant) => {
         setOtherParticipants((participants) =>
           participants.filter((p) => p.participant !== participant),
         );
       });
 
-      socket.on(`syncSessionState:${user.sub}`, (sessionMode, timerMode) => {
-        if (sessionMode === SessionMachineState.work) {
-          send({ type: SessionMachineTransition.work });
-          updateSessionMode(SessionMachineState.work);
-        } else {
-          send({ type: SessionMachineTransition.break });
-          updateSessionMode(SessionMachineState.break);
-        }
-
-        switch (timerMode) {
-          case TimerMachineState.running:
-            if (current.value[sessionMode] == TimerMachineState.idle) {
-              send({
-                type: TimerMachineTransition.start,
-                participantId: user.sub,
-                preset: currentPreset(),
-                currentSessionMode: sessionMode,
-              });
-            } else {
-              send({
-                type: TimerMachineTransition.resume,
-                participantId: user.sub,
-                preset: currentPreset(),
-                currentSessionMode: sessionMode,
-              });
-            }
-          case TimerMachineState.paused:
-            send({
-              type: TimerMachineTransition.pause,
-              participantId: user.sub,
-              preset: currentPreset(),
-              currentSessionMode: sessionMode,
-            });
-          case TimerMachineState.idle:
-            send({
-              type: TimerMachineTransition.stop,
-              participantId: user.sub,
-              preset: currentPreset(),
-              currentSessionMode: sessionMode,
-            });
-        }
-      });
-
       socket.on("addExistingParticipants", (existingParticipants) => {
         setOtherParticipants(existingParticipants);
       });
-
-      socket.on(
-        "syncRequest",
-        (targetSocketId, participantId, participantDisplayName) => {
-          toast(`${participantDisplayName} would like to sync timers`, {
-            description: `syncing will give ${participantDisplayName} control over the timer`,
-            action: {
-              label: "accept",
-              onClick: () => {
-                socket.emit(
-                  "syncAcceptance",
-                  room,
-                  user.sub,
-                  targetSocketId,
-                  participantId,
-                );
-              },
-            },
-          });
-        },
-      );
 
       setSocketConnectionState(socket.connected);
     }
@@ -152,20 +96,20 @@ export default () => {
             defaultSize={80}
             className="flex items-center justify-center"
           >
-            <div className="flex flex-col items-center">
+            <div className="flex flex-col items-center gap-5">
               <ClockFace
                 size="text-8xl"
                 participantId={user?.sub}
-                preset={currentPreset()}
+                preset={currentPreset}
               />
-              {current.value[sessionMode] === TimerMachineState.idle && (
+              {currentTimerMachineState === TimerMachineState.idle && (
                 <Button
                   onClick={() =>
                     send({
                       type: TimerMachineTransition.start,
                       participantId: user.sub,
-                      preset: currentPreset(),
-                      currentSessionMode: sessionMode,
+                      preset: currentPreset * 60,
+                      transition: nextTransition,
                     })
                   }
                   disabled={!isSocketConnected}
@@ -174,15 +118,14 @@ export default () => {
                 </Button>
               )}
 
-              {(current.value[sessionMode] === TimerMachineState.running ||
-                current.value[sessionMode] == TimerMachineState.paused) && (
+              {(currentTimerMachineState === TimerMachineState.running ||
+                currentTimerMachineState == TimerMachineState.paused) && (
                 <div className="flex justify-center gap-5">
-                  {current.value[sessionMode] == TimerMachineState.running && (
+                  {currentTimerMachineState == TimerMachineState.running && (
                     <Button
                       onClick={() =>
                         send({
                           type: TimerMachineTransition.pause,
-                          currentSessionMode: sessionMode,
                           participantId: user.sub,
                         })
                       }
@@ -192,7 +135,7 @@ export default () => {
                     </Button>
                   )}
 
-                  {current.value[sessionMode] == TimerMachineState.paused && (
+                  {currentTimerMachineState == TimerMachineState.paused && (
                     <Button
                       onClick={() =>
                         send({
@@ -210,8 +153,8 @@ export default () => {
                     onClick={() =>
                       send({
                         type: TimerMachineTransition.stop,
-                        currentSessionMode: sessionMode,
                         participantId: user.sub,
+                        transition: nextTransition,
                       })
                     }
                     disabled={!isSocketConnected}
@@ -220,8 +163,8 @@ export default () => {
                   </Button>
                 </div>
               )}
-              {current.value[sessionMode] === TimerMachineState.idle && (
-                <div>
+              {currentTimerMachineState === TimerMachineState.idle && (
+                <div className="flex flex-col gap-3">
                   <NumberInput
                     label="session"
                     value={workPreset}
@@ -240,22 +183,24 @@ export default () => {
               )}
             </div>
           </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={20}>
-            {otherParticipants.map(({ participant, socketId }, index) => {
-              return (
-                <>
-                  <ParticipantCard
-                    participant={participant}
-                    participantSocket={socketId}
-                    avatar={user.picture}
-                    room={room}
-                    key={index}
-                  />
-                </>
-              );
-            })}
-          </ResizablePanel>
+          {otherParticipants.length > 0 && <ResizableHandle withHandle />}
+          {otherParticipants.length > 0 && (
+            <ResizablePanel defaultSize={20}>
+              {otherParticipants.map(({ participant, socketId }, index) => {
+                return (
+                  <>
+                    <ParticipantCard
+                      participant={participant}
+                      participantSocket={socketId}
+                      avatar={user.picture}
+                      room={room}
+                      key={index}
+                    />
+                  </>
+                );
+              })}
+            </ResizablePanel>
+          )}
         </ResizablePanelGroup>
       </div>
     </>
