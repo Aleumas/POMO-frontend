@@ -58,6 +58,11 @@ export default () => {
         ]);
       });
 
+      socket.on(`sessionCompletion:${user.sub}`, () => {
+        var chime = new Audio("done.mp3");
+        chime.play();
+      });
+
       socket.on("removeParticipant", (participant) => {
         setOtherParticipants((participants) =>
           participants.filter((p) => p.participant !== participant),
