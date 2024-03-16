@@ -1,6 +1,6 @@
 "use client";
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import ClockFace from "@/components/ui/clock-face";
 import { Button } from "@/components/ui/button";
 import NumberInput from "@/components/ui/number-input";
@@ -19,19 +19,22 @@ import SessionMachine, {
   SessionMachineState,
   SessionMachineTransition,
 } from "@/components/session-machine";
+import { Progress } from "@/components/ui/progress";
 
 export default () => {
   const { user, isLoading } = useUser();
+
   const [isSocketConnected, setSocketConnectionState] = useState(false);
   const [workPreset, setWorkPreset] = useState(25);
-  const [breakPreset, setBreakPreset] = useState(5);
+  const [breakPreset, setBreakPreset] = useState(0.5);
   const [otherParticipants, setOtherParticipants] = useState([]);
-  let room = "room";
+  const [progress, updateProgress] = useState(0);
 
   const [snapshot, send] = useMachine(SessionMachine);
+
   const currentTimerMachineState = Object.values(snapshot.value)[0];
   const currentSessionMachineState = Object.keys(snapshot.value)[0];
-  const nextTransition =
+  const nextSessionTransition =
     currentSessionMachineState == SessionMachineState.work
       ? SessionMachineTransition.break
       : SessionMachineTransition.work;
@@ -40,12 +43,24 @@ export default () => {
       ? workPreset
       : breakPreset;
 
+  const currentPresetRef = useRef(currentPreset);
+  const nextSessionTransitionRef = useRef(nextSessionTransition);
+  const currentTimerMachineRef = useRef(Object.values(snapshot.value)[0]);
+
+  let room = "room";
+
   useEffect(() => {
     socket.connect();
     return () => {
       socket.disconnect();
     };
   }, []);
+
+  useEffect(() => {
+    currentPresetRef.current = currentPreset;
+    nextSessionTransitionRef.current = nextSessionTransition;
+    currentTimerMachineRef.current = Object.values(snapshot.value)[0];
+  }, [snapshot]);
 
   useEffect(() => {
     if (!isLoading && user && !isSocketConnected) {
@@ -63,7 +78,7 @@ export default () => {
       });
 
       socket.on(`sessionCompletion:${user.sub}`, () => {
-        var chime = new Audio("done.mp3");
+        var chime = new Audio("sounds/done.mp3");
         chime.play();
       });
 
@@ -97,20 +112,37 @@ export default () => {
             className="flex items-center justify-center"
           >
             <div className="flex flex-col items-center gap-5">
+              <Progress value={progress} className="w-full" />
               <ClockFace
                 size="text-8xl"
                 participantId={user?.sub}
                 preset={currentPreset}
+                updateProgress={(time) => {
+                  if (
+                    !(
+                      currentTimerMachineRef.current ===
+                      TimerMachineState.running
+                    )
+                  ) {
+                    return;
+                  }
+                  const preset = currentPresetRef.current * 60;
+                  updateProgress(((preset - time) / preset) * 100);
+                }}
               />
               {currentTimerMachineState === TimerMachineState.idle && (
                 <Button
                   onClick={() =>
-                    send({
-                      type: TimerMachineTransition.start,
-                      participantId: user.sub,
-                      preset: currentPreset * 60,
-                      transition: nextTransition,
-                    })
+                    socket.emit(
+                      "startTimer",
+                      user.sub,
+                      currentPreset * 60,
+                      TimerMachineTransition.start,
+                      [
+                        nextSessionTransitionRef.current,
+                        TimerMachineTransition.stop,
+                      ],
+                    )
                   }
                   disabled={!isSocketConnected}
                 >
@@ -119,29 +151,29 @@ export default () => {
               )}
 
               {(currentTimerMachineState === TimerMachineState.running ||
-                currentTimerMachineState == TimerMachineState.paused) && (
+                currentTimerMachineState === TimerMachineState.paused) && (
                 <div className="flex justify-center gap-5">
                   {currentTimerMachineState == TimerMachineState.running && (
                     <Button
-                      onClick={() =>
-                        send({
-                          type: TimerMachineTransition.pause,
-                          participantId: user.sub,
-                        })
-                      }
+                      onClick={() => socket.emit("pauseTimer", user.sub)}
                       disabled={!isSocketConnected}
                     >
                       Pause
                     </Button>
                   )}
 
-                  {currentTimerMachineState == TimerMachineState.paused && (
+                  {currentTimerMachineState === TimerMachineState.paused && (
                     <Button
                       onClick={() =>
-                        send({
-                          type: TimerMachineTransition.resume,
-                          participantId: user.sub,
-                        })
+                        socket.emit(
+                          "resumeTimer",
+                          user.sub,
+                          TimerMachineTransition.resume,
+                          [
+                            nextSessionTransitionRef.current,
+                            TimerMachineTransition.stop,
+                          ],
+                        )
                       }
                       disabled={!isSocketConnected}
                     >
@@ -150,13 +182,12 @@ export default () => {
                   )}
 
                   <Button
-                    onClick={() =>
-                      send({
-                        type: TimerMachineTransition.stop,
-                        participantId: user.sub,
-                        transition: nextTransition,
-                      })
-                    }
+                    onClick={() => {
+                      socket.emit("stopTimer", user.sub, [
+                        nextSessionTransitionRef.current,
+                        TimerMachineTransition.stop,
+                      ]);
+                    }}
                     disabled={!isSocketConnected}
                   >
                     Stop

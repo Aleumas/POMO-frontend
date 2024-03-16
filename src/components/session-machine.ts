@@ -1,5 +1,4 @@
 import { createMachine } from "xstate";
-import { socket } from "@/socket";
 
 export enum TimerMachineState {
   idle = "idle",
@@ -32,7 +31,6 @@ const TimerMachine = {
       on: {
         [TimerMachineTransition.start]: {
           target: TimerMachineState.running,
-          actions: "startTimer",
         },
       },
     },
@@ -40,11 +38,9 @@ const TimerMachine = {
       on: {
         [TimerMachineTransition.pause]: {
           target: TimerMachineState.paused,
-          actions: "pauseTimer",
         },
         [TimerMachineTransition.stop]: {
           target: TimerMachineState.idle,
-          actions: "stopTimer",
         },
       },
     },
@@ -52,73 +48,36 @@ const TimerMachine = {
       on: {
         [TimerMachineTransition.resume]: {
           target: TimerMachineState.running,
-          actions: "resumeTimer",
         },
         [TimerMachineTransition.stop]: {
           target: TimerMachineState.idle,
-          actions: "stopTimer",
         },
       },
     },
   },
 };
 
-const SessionMachine = createMachine(
-  {
-    id: "session",
-    initial: SessionMachineState.work,
-    states: {
-      [SessionMachineState.work]: {
-        on: {
-          [SessionMachineTransition.break]: {
-            target: SessionMachineState.break,
-            actions: "startBreak",
-          },
+const SessionMachine = createMachine({
+  id: "session",
+  initial: SessionMachineState.work,
+  states: {
+    [SessionMachineState.work]: {
+      on: {
+        [SessionMachineTransition.break]: {
+          target: SessionMachineState.break,
         },
-        ...TimerMachine,
       },
-      [SessionMachineState.break]: {
-        on: {
-          [SessionMachineTransition.work]: {
-            target: SessionMachineState.work,
-            actions: "startWork",
-          },
+      ...TimerMachine,
+    },
+    [SessionMachineState.break]: {
+      on: {
+        [SessionMachineTransition.work]: {
+          target: SessionMachineState.work,
         },
-        ...TimerMachine,
       },
+      ...TimerMachine,
     },
   },
-  {
-    actions: {
-      startTimer: (context) => {
-        socket.emit(
-          "startTimer",
-          context.event.participantId,
-          context.event.preset,
-          context.event.transition,
-        );
-      },
-      stopTimer: (context) => {
-        socket.emit(
-          "stopTimer",
-          context.event.participantId,
-          context.event.transition,
-        );
-      },
-      pauseTimer: (context) => {
-        socket.emit("pauseTimer", context.event.participantId);
-      },
-      resumeTimer: (context) => {
-        socket.emit("resumeTimer", context.event.participantId);
-      },
-      startWork: (context) => {
-        socket.emit("startWork", context.event.participantId);
-      },
-      startBreak: (context) => {
-        socket.emit("startBreak", context.event.participantId);
-      },
-    },
-  },
-);
+});
 
 export default SessionMachine;

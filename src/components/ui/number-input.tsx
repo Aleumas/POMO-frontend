@@ -13,8 +13,8 @@ export default ({
 }) => {
   return (
     <>
-      <div className="flex flex-col items-center">
-        <p className="text-sm">{label}</p>
+      <div className="flex flex-col items-center gap-2">
+        <p className="text-md">{label}</p>
         <div className="flex flex-row items-center gap-5">
           <Button
             onClick={() => {
@@ -22,14 +22,16 @@ export default ({
             }}
             variant="outline"
             size="icon"
-            disabled={value <= 0}
+            disabled={value <= 1}
           >
             <Minus className="h-4 w-4" />
           </Button>
           <Input
             value={value}
             onChange={(e) => {
-              onChange(handleInput(e.target.value, value));
+              if (value > 0 && value < 100) {
+                onChange(handleInput(e.target.value, value));
+              }
             }}
           />
           <Button
@@ -38,6 +40,7 @@ export default ({
             }}
             variant="outline"
             size="icon"
+            disabled={value >= 100}
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -49,7 +52,7 @@ export default ({
 
 const handleInput = (newValue: string, oldValue: number): number => {
   if (newValue === "") {
-    return 0;
+    return 1;
   }
   return parseInt(newValue) ?? oldValue;
 };
