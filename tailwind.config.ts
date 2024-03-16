@@ -5,6 +5,9 @@ const config = {
   content: ["./src/**/*.{js,ts,jsx,tsx,mdx}"],
   prefix: "",
   theme: {
+    fontFamily: {
+      firaCode: ["firaCode", "mono"],
+    },
     container: {
       center: true,
       padding: "2rem",
