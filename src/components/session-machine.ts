@@ -41,6 +41,7 @@ const TimerMachine = {
         },
         [TimerMachineTransition.stop]: {
           target: TimerMachineState.idle,
+          actions: "resetProgress",
         },
       },
     },

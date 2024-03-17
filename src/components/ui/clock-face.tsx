@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 export default ({
   size,
   preset = 0,
+  animated,
   participantId,
   updateProgress,
 }: {
   size: string;
   preset: number;
+  animated: boolean;
   participantId?: string;
   updateProgress?: (timer: number) => void;
 }) => {
@@ -22,7 +24,9 @@ export default ({
 
   useEffect(() => {
     socket.on(`timeUpdate:${participantId}`, (time) => {
-      updateProgress(time);
+      if (updateProgress != null) {
+        updateProgress(time);
+      }
       setTimerDigits(secondsToTime(time).split(""));
     });
 
@@ -40,15 +44,19 @@ export default ({
             key={`digit-wrapper-${index}`}
           >
             <AnimatePresence key={index} mode="wait">
-              <motion.span
-                key={digit + index}
-                initial={{ y: -30, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 30, opacity: 0 }}
-                transition={{ duration: 0.2, type: "tween" }}
-              >
-                {digit}
-              </motion.span>
+              {animated ? (
+                <motion.span
+                  key={digit + index}
+                  initial={{ y: -30, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 30, opacity: 0 }}
+                  transition={{ duration: 0.2, type: "tween" }}
+                >
+                  {digit}
+                </motion.span>
+              ) : (
+                <div>{digit}</div>
+              )}
             </AnimatePresence>
           </div>
         ))}

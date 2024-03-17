@@ -9,7 +9,12 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { useUser } from "@auth0/nextjs-auth0/client";
-import { TimerMachineState } from "@/components/session-machine";
+import {
+  SessionMachineState,
+  TimerMachineState,
+  SessionMachineTransition,
+  TimerMachineTransition,
+} from "@/components/session-machine";
 
 export default ({
   participant,
@@ -25,12 +30,40 @@ export default ({
   room: string;
 }) => {
   const { user, isLoading } = useUser();
-  const [mode, setMode] = useState<TimerMachineState>(TimerMachineState.idle);
+  const [sessionMachineState, setSessionMachineState] =
+    useState<SessionMachineState>(SessionMachineState.work);
+  const [timerMachineState, setTimerMachineState] = useState<TimerMachineState>(
+    TimerMachineState.idle,
+  );
   const [inSync, setSyncStatus] = useState(false);
+  const modeBorderColor = {
+    idle: "border-white",
+    running:
+      sessionMachineState == SessionMachineState.work
+        ? "border-rose-600"
+        : "border-green-600",
+    paused: "border-orange-400",
+  };
 
   useEffect(() => {
-    socket.on(`timerModeUpdate:${participant}`, (mode) => {
-      setMode(mode);
+    socket.on(`machineTransition:${participant}`, (transition) => {
+      switch (transition) {
+        case TimerMachineTransition.start:
+        case TimerMachineTransition.resume:
+          setTimerMachineState(TimerMachineState.running);
+          break;
+        case TimerMachineTransition.pause:
+          setTimerMachineState(TimerMachineState.paused);
+          break;
+        case TimerMachineTransition.stop:
+          setTimerMachineState(TimerMachineState.idle);
+          break;
+        case SessionMachineTransition.break:
+          setSessionMachineState(SessionMachineState.break);
+          break;
+        case SessionMachineTransition.work:
+          setSessionMachineState(SessionMachineState.work);
+      }
     });
 
     socket.on("syncStatusUpdate", (status) => {
@@ -47,7 +80,7 @@ export default ({
     <>
       <ContextMenu>
         <ContextMenuTrigger
-          className={`${modeBorderColor[mode]} border-input bg-background hover:bg-accent hover:text-accent-foreground m-2 flex basis-1/4 flex-col items-center justify-center gap-2 rounded-lg border-2 p-2`}
+          className={`${modeBorderColor[timerMachineState]} border-input bg-background hover:bg-accent hover:text-accent-foreground m-2 flex basis-1/4 flex-col items-center justify-center gap-2 rounded-lg border-2 p-2`}
         >
           <Avatar>
             <AvatarImage src={avatar} alt={participant + "'s avatar"} />
@@ -57,6 +90,7 @@ export default ({
             size="text-xl"
             participantId={participant}
             preset={preset}
+            animated={false}
           />
         </ContextMenuTrigger>
 
@@ -84,10 +118,4 @@ export default ({
       </ContextMenu>
     </>
   );
-};
-
-const modeBorderColor = {
-  idle: "border-zinc-300",
-  running: "border-orange-800",
-  paused: "border-emerald-800",
 };

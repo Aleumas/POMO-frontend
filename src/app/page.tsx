@@ -25,7 +25,7 @@ export default () => {
   const { user, isLoading } = useUser();
 
   const [isSocketConnected, setSocketConnectionState] = useState(false);
-  const [workPreset, setWorkPreset] = useState(25);
+  const [workPreset, setWorkPreset] = useState(1);
   const [breakPreset, setBreakPreset] = useState(0.5);
   const [otherParticipants, setOtherParticipants] = useState([]);
   const [progress, updateProgress] = useState(0);
@@ -84,6 +84,9 @@ export default () => {
 
       socket.on(`machineTransition:${user.sub}`, (transition) => {
         send({ type: transition });
+        if (transition === TimerMachineTransition.stop) {
+          updateProgress(0); // reset
+        }
       });
 
       socket.on("removeParticipant", (participant) => {
@@ -112,11 +115,20 @@ export default () => {
             className="flex items-center justify-center"
           >
             <div className="flex flex-col items-center gap-5">
-              <Progress value={progress} className="w-full" />
+              <Progress
+                value={progress}
+                className="w-full"
+                color={
+                  currentSessionMachineState === SessionMachineState.work
+                    ? "bg-rose-600"
+                    : "bg-green-600"
+                }
+              />
               <ClockFace
                 size="text-8xl"
                 participantId={user?.sub}
                 preset={currentPreset}
+                animated={true}
                 updateProgress={(time) => {
                   if (
                     !(
