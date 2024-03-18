@@ -14,6 +14,7 @@ import {
   TimerMachineState,
   SessionMachineTransition,
   TimerMachineTransition,
+  transitionsToTargetState,
 } from "@/components/session-machine";
 
 export default ({
@@ -21,11 +22,11 @@ export default ({
   participantSocket,
   room,
   avatar,
-  preset,
+  preset = 0,
 }: {
   participant: string;
   participantSocket: string;
-  preset: number;
+  preset?: number;
   avatar: string;
   room: string;
 }) => {
@@ -45,34 +46,46 @@ export default ({
     paused: "border-orange-400",
   };
 
+  const updateMachineState = (transition: string) => {
+    switch (transition) {
+      case TimerMachineTransition.start:
+      case TimerMachineTransition.resume:
+        setTimerMachineState(TimerMachineState.running);
+        break;
+      case TimerMachineTransition.pause:
+        setTimerMachineState(TimerMachineState.paused);
+        break;
+      case TimerMachineTransition.stop:
+        setTimerMachineState(TimerMachineState.idle);
+        break;
+      case SessionMachineTransition.break:
+        setSessionMachineState(SessionMachineState.break);
+        break;
+      case SessionMachineTransition.work:
+        setSessionMachineState(SessionMachineState.work);
+    }
+  };
+
   useEffect(() => {
     socket.on(`machineTransition:${participant}`, (transition) => {
-      switch (transition) {
-        case TimerMachineTransition.start:
-        case TimerMachineTransition.resume:
-          setTimerMachineState(TimerMachineState.running);
-          break;
-        case TimerMachineTransition.pause:
-          setTimerMachineState(TimerMachineState.paused);
-          break;
-        case TimerMachineTransition.stop:
-          setTimerMachineState(TimerMachineState.idle);
-          break;
-        case SessionMachineTransition.break:
-          setSessionMachineState(SessionMachineState.break);
-          break;
-        case SessionMachineTransition.work:
-          setSessionMachineState(SessionMachineState.work);
-      }
+      updateMachineState(transition);
     });
 
-    socket.on("syncStatusUpdate", (status) => {
+    socket.on(`setMachineSnapshot:${participant}`, (snapshot) => {
+      const transitions = transitionsToTargetState(snapshot.value);
+      transitions.forEach((transition) => {
+        updateMachineState(transition);
+      });
+    });
+
+    socket.on(`syncStatusUpdate:${participant}`, (status) => {
       setSyncStatus(status);
     });
 
     return () => {
-      socket.off(`modeUpdate:${participant}`);
-      socket.off("syncStatusUpdate");
+      socket.off(`machineTransition:${participant}`);
+      socket.off(`setMachineSnapshot:${participant}`);
+      socket.off(`syncStatusUpdate:${participant}`);
     };
   }, [participant]);
 
@@ -80,7 +93,7 @@ export default ({
     <>
       <ContextMenu>
         <ContextMenuTrigger
-          className={`${modeBorderColor[timerMachineState]} border-input bg-background hover:bg-accent hover:text-accent-foreground m-2 flex basis-1/4 flex-col items-center justify-center gap-2 rounded-lg border-2 p-2`}
+          className={`${modeBorderColor[timerMachineState]} border-input bg-background hover:bg-accent hover:text-accent-foreground m-2 flex shrink-0 basis-1/4 flex-col items-center justify-center gap-2 rounded-lg border-2 p-2`}
         >
           <Avatar>
             <AvatarImage src={avatar} alt={participant + "'s avatar"} />
@@ -100,14 +113,9 @@ export default ({
             onClick={() => {
               if (!isLoading && user) {
                 if (inSync) {
-                  socket.emit("unsync", room, user.sub, participantSocket);
+                  socket.emit("unsync", room, participantSocket);
                 } else {
-                  socket.emit(
-                    "syncRequest",
-                    participantSocket,
-                    user.sub,
-                    user.name,
-                  );
+                  socket.emit("syncRequest", room, participantSocket);
                 }
               }
             }}

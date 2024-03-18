@@ -41,7 +41,6 @@ const TimerMachine = {
         },
         [TimerMachineTransition.stop]: {
           target: TimerMachineState.idle,
-          actions: "resetProgress",
         },
       },
     },
@@ -80,5 +79,30 @@ const SessionMachine = createMachine({
     },
   },
 });
+
+export const transitionsToTargetState = (targetState: { string: string }) => {
+  const sessionState = Object.keys(targetState)[0];
+  const timerState = Object.values(targetState)[0];
+  const timerTransitionMap = {
+    [TimerMachineState.idle]: [TimerMachineTransition.stop],
+    [TimerMachineState.running]: [
+      TimerMachineTransition.stop,
+      TimerMachineTransition.start,
+    ],
+    [TimerMachineState.paused]: [
+      TimerMachineTransition.stop,
+      TimerMachineTransition.start,
+      TimerMachineTransition.pause,
+    ],
+  };
+  const sessionTransitionMap = {
+    [SessionMachineState.work]: SessionMachineTransition.work,
+    [SessionMachineState.break]: SessionMachineTransition.break,
+  };
+  return [
+    sessionTransitionMap[sessionState],
+    ...timerTransitionMap[timerState],
+  ];
+};
 
 export default SessionMachine;

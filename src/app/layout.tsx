@@ -16,7 +16,7 @@ export default function App({ children }: { children: React.ReactNode }) {
           >
             <div className="h-screen w-screen">{children}</div>
           </ThemeProvider>
-          <Toaster />
+          <Toaster richColors />
         </body>
       </html>
     </UserProvider>
