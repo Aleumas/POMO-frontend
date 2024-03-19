@@ -22,13 +22,15 @@ export default ({
   participantSocket,
   room,
   avatar,
+  displayName,
   preset = 0,
 }: {
   participant: string;
   participantSocket: string;
-  preset?: number;
   avatar: string;
   room: string;
+  displayName: string;
+  preset?: number;
 }) => {
   const { user, isLoading } = useUser();
   const [sessionMachineState, setSessionMachineState] =
@@ -93,7 +95,7 @@ export default ({
     <>
       <ContextMenu>
         <ContextMenuTrigger
-          className={`${modeBorderColor[timerMachineState]} border-input bg-background hover:bg-accent hover:text-accent-foreground m-2 flex shrink-0 basis-1/4 flex-col items-center justify-center gap-2 rounded-lg border-2 p-2`}
+          className={`${modeBorderColor[timerMachineState]} bg-background hover:bg-accent hover:text-accent-foreground m-2 flex shrink-0 basis-1/4 flex-col items-center justify-center gap-2 rounded-lg border-2 p-2`}
         >
           <Avatar>
             <AvatarImage src={avatar} alt={participant + "'s avatar"} />
