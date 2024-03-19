@@ -43,14 +43,14 @@ export default ({
             className={`relative flex items-center justify-center ${digit === ":" ? "w-auto" : ""}`}
             key={`digit-wrapper-${index}`}
           >
-            <AnimatePresence key={index} mode="wait">
+            <AnimatePresence key={index} mode="popLayout">
               {animated ? (
                 <motion.span
                   key={digit + index}
                   initial={{ y: -30, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: 30, opacity: 0 }}
-                  transition={{ duration: 0.2, type: "tween" }}
+                  transition={{ duration: 0.1, type: "tween" }}
                 >
                   {digit}
                 </motion.span>
