@@ -4,10 +4,11 @@ import { useUser } from "@auth0/nextjs-auth0/client";
 import { useEffect, useState, useRef } from "react";
 import { useMachine } from "@xstate/react";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
 import ClockFace from "@/components/ui/clock-face";
 import { Button } from "@/components/ui/button";
-import NumberInput from "@/components/ui/number-input";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -16,6 +17,16 @@ import {
 import ParticipantCard from "@/components/ui/participant-card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import SessionSlider from "@/components/ui/session-slider";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 import SessionMachine, {
   TimerMachineState,
@@ -28,12 +39,11 @@ import SessionMachine, {
 import { socket } from "@/socket";
 
 export default ({ params }: { params: { id: string } }) => {
-  const { user, isLoading } = useUser();
+  const { user } = useUser();
+  const router = useRouter();
 
-  const [isSocketConnected, setSocketConnectionState] = useState(false);
-
-  const [workPreset, setWorkPreset] = useState(1);
-  const [breakPreset, setBreakPreset] = useState(0.5);
+  const [workPreset, setWorkPreset] = useState(25);
+  const [breakPreset, setBreakPreset] = useState(0.1);
 
   const [otherParticipants, setOtherParticipants] = useState([]);
   const [progress, updateProgress] = useState(0);
@@ -42,7 +52,7 @@ export default ({ params }: { params: { id: string } }) => {
     setDirectionParticipantPanelDirection,
   ] = useState<Direction>("vertical");
 
-  const [snapshot, send] = useMachine(SessionMachine);
+  const [snapshot, send, actor] = useMachine(SessionMachine);
 
   const currentTimerMachineState = Object.values(snapshot.value)[0];
   const currentSessionMachineState = Object.keys(snapshot.value)[0];
@@ -60,15 +70,9 @@ export default ({ params }: { params: { id: string } }) => {
   const nextSessionTransitionRef = useRef(nextSessionTransition);
   const currentTimerMachineRef = useRef(currentTimerMachineState);
   const currentSessionMachineRef = useRef(currentSessionMachineState);
+  const isSocketConnected = useRef(false);
 
   let room = params.id;
-
-  useEffect(() => {
-    socket.connect();
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
 
   useEffect(() => {
     function handleResize() {
@@ -94,7 +98,18 @@ export default ({ params }: { params: { id: string } }) => {
   }, [snapshot]);
 
   useEffect(() => {
-    if (!isLoading && user && !isSocketConnected) {
+    if (!user) {
+      return;
+    }
+
+    socket.connect();
+    socket.on("connect", () => {
+      if (isSocketConnected.current) {
+        return;
+      }
+
+      isSocketConnected.current = true;
+
       socket.emit("joinRoom", room, user.name, user.picture, user.sub);
 
       socket.on("showToast", (message, type) => {
@@ -109,7 +124,6 @@ export default ({ params }: { params: { id: string } }) => {
             toast(message);
         }
       });
-
       socket.on("showSyncRequest", (source) => {
         toast.message(`${source.displayName} wants to sync timers.`, {
           description: `User will be able to control your timer.`,
@@ -125,23 +139,19 @@ export default ({ params }: { params: { id: string } }) => {
           },
         });
       });
-
       socket.on("syncMachines", () => {
-        socket.emit("syncMachines", snapshot);
+        socket.emit("syncMachines", actor.getSnapshot());
       });
-
       socket.on(`setMachineSnapshot:${user.sub}`, (snapshot) => {
         const transitions = transitionsToTargetState(snapshot.value);
         transitions.forEach((transition) => {
           send({ type: transition });
         });
       });
-
       socket.on(`sessionCompletion:${user.sub}`, () => {
-        var chime = new Audio("sounds/done.mp3");
+        var chime = new Audio("../sounds/done.mp3");
         chime.play();
       });
-
       socket.on(`machineTransition:${user?.sub}`, (transition) => {
         send({ type: transition });
         if (transition === TimerMachineTransition.stop) {
@@ -149,22 +159,22 @@ export default ({ params }: { params: { id: string } }) => {
           socket.emit("updateTimer", currentPresetRef.current * 60, user?.sub);
         }
       });
-
       socket.on("removeParticipant", (participant) => {
         setOtherParticipants((participants) =>
-          participants.filter((p) => p.participant !== participant),
+          participants.filter((p) => p.uid !== participant),
         );
       });
-
       socket.on("addExistingParticipants", (existingParticipants) => {
         setOtherParticipants(
-          existingParticipants.filter((p) => p.participant != user?.sub),
+          existingParticipants.filter((p) => p.uid != user?.sub),
         );
       });
+    });
 
-      setSocketConnectionState(socket.connected);
-    }
-  }, [isLoading, user]);
+    return () => {
+      socket.disconnect();
+    };
+  }, [user]);
 
   return (
     <>
@@ -175,10 +185,41 @@ export default ({ params }: { params: { id: string } }) => {
         >
           <ResizablePanel
             defaultSize={80}
-            className="flex items-center justify-center"
+            className="flex flex-col items-center justify-center gap-5"
           >
+            <Sheet>
+              <SheetTrigger>
+                <Avatar className="fixed left-5 top-5">
+                  <AvatarImage src={user?.picture} />
+                  <AvatarFallback />
+                </Avatar>
+              </SheetTrigger>
+              <SheetContent side="left">
+                <SheetHeader>
+                  <SheetTitle>Options</SheetTitle>
+                  <Button
+                    className="mt-3 w-full"
+                    onClick={() => {
+                      router.push("http://localhost:3001/api/auth/logout");
+                    }}
+                  >
+                    Logout
+                  </Button>
+                </SheetHeader>
+              </SheetContent>
+            </Sheet>
+
+            <h1
+              className={`${currentSessionMachineState === SessionMachineState.work ? "decoration-rose-600" : "decoration-green-600"} text-lg font-semibold underline decoration-solid decoration-4 underline-offset-8`}
+            >
+              {currentSessionMachineState}
+            </h1>
             <div className="flex flex-col items-center gap-5">
               <Progress
+                hidden={
+                  currentTimerMachineState != TimerMachineState.running &&
+                  currentTimerMachineState != TimerMachineState.paused
+                }
                 value={progress}
                 className="w-full"
                 color={
@@ -207,10 +248,11 @@ export default ({ params }: { params: { id: string } }) => {
               />
               {currentTimerMachineState === TimerMachineState.idle && (
                 <Button
+                  className="w-full"
                   onClick={() =>
                     socket.emit(
                       "startTimer",
-                      user.sub,
+                      user?.sub,
                       currentPreset * 60,
                       TimerMachineTransition.start,
                       [
@@ -219,7 +261,7 @@ export default ({ params }: { params: { id: string } }) => {
                       ],
                     )
                   }
-                  disabled={!isSocketConnected}
+                  disabled={!isSocketConnected.current}
                 >
                   Start
                 </Button>
@@ -227,11 +269,12 @@ export default ({ params }: { params: { id: string } }) => {
 
               {(currentTimerMachineState === TimerMachineState.running ||
                 currentTimerMachineState === TimerMachineState.paused) && (
-                <div className="flex justify-center gap-5">
+                <div className="flex w-full justify-center gap-5">
                   {currentTimerMachineState == TimerMachineState.running && (
                     <Button
                       onClick={() => socket.emit("pauseTimer", user.sub)}
-                      disabled={!isSocketConnected}
+                      disabled={!isSocketConnected.current}
+                      className="flex-1"
                     >
                       Pause
                     </Button>
@@ -250,7 +293,8 @@ export default ({ params }: { params: { id: string } }) => {
                           ],
                         )
                       }
-                      disabled={!isSocketConnected}
+                      disabled={!isSocketConnected.current}
+                      className="flex-1"
                     >
                       resume
                     </Button>
@@ -263,28 +307,33 @@ export default ({ params }: { params: { id: string } }) => {
                         TimerMachineTransition.stop,
                       ]);
                     }}
-                    disabled={!isSocketConnected}
+                    disabled={!isSocketConnected.current}
+                    className="flex-1"
                   >
                     Stop
                   </Button>
                 </div>
               )}
               {currentTimerMachineState === TimerMachineState.idle && (
-                <div className="flex flex-col gap-3">
-                  <NumberInput
-                    label="work"
-                    value={workPreset}
-                    onChange={(newValue) => {
-                      setWorkPreset(newValue);
-                    }}
-                  />
-                  <NumberInput
-                    label="break"
-                    value={breakPreset}
-                    onChange={(newValue) => {
-                      setBreakPreset(newValue);
-                    }}
-                  />
+                <div className="flex w-full flex-col gap-3">
+                  {currentSessionMachineState === SessionMachineState.work && (
+                    <SessionSlider
+                      value={workPreset}
+                      color="bg-rose-600"
+                      onChange={(newValue) => {
+                        setWorkPreset(newValue);
+                      }}
+                    />
+                  )}
+                  {currentSessionMachineState === SessionMachineState.break && (
+                    <SessionSlider
+                      value={breakPreset}
+                      color="bg-green-600"
+                      onChange={(newValue) => {
+                        setBreakPreset(newValue);
+                      }}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -295,15 +344,16 @@ export default ({ params }: { params: { id: string } }) => {
               <ScrollArea className="h-full w-full p-2">
                 <div className="flex overflow-x-auto md:flex-col">
                   {otherParticipants.map(
-                    ({ participant, socketId, avatar }, index) => {
+                    ({ uid, socketId, avatar, displayName }, index) => {
                       return (
                         <>
                           <ParticipantCard
-                            participant={participant}
+                            participant={uid}
                             participantSocket={socketId}
                             avatar={avatar}
                             room={room}
                             key={index}
+                            displayName={displayName}
                           />
                         </>
                       );
