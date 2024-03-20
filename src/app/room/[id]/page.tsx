@@ -5,7 +5,6 @@ import { useEffect, useState, useRef } from "react";
 import { useMachine } from "@xstate/react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 
 import ClockFace from "@/components/ui/clock-face";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,6 @@ import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import SessionSlider from "@/components/ui/session-slider";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetContent,
