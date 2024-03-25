@@ -1,3 +1,7 @@
 export default () => {
-  return <h1>Hello World!</h1>;
+  return (
+    <div className="flex h-screen w-screen flex-col">
+      <div className="flex h-96 flex-1"></div>
+    </div>
+  );
 };

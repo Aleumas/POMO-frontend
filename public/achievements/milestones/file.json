@@ -1,0 +1,26 @@
+[
+  {
+    "title": "10 sessions",
+    "description": "A remarkable first stride on the path of unwavering focus!",
+    "requirement": "Complete a total of 10 Pomodoro sessions.",
+    "medal": "https://draft.spline.design/vvZneCmC8l3OWhSE/scene.splinecode",
+    "image": "https://pomo-awards.s3.us-east-2.amazonaws.com/10-sessions.png",
+    "value": 10
+  },
+  {
+    "title": "50 sessions",
+    "description": "Your dedication to productivity is truly remarkable!",
+    "requirement": "Complete a total of 50 Pomodoro sessions.",
+    "medal": "https://prod.spline.design/SaIsL1eAFSJ6MTf1/scene.splinecode",
+    "image": "https://pomo-awards.s3.us-east-2.amazonaws.com/50-sessions.png",
+    "value": 50
+  },
+  {
+    "title": "100 sessions",
+    "description": "Your concentration is a beacon of productivity excellence!",
+    "requirement": "Complete a total of 100 Pomodoro sessions.",
+    "medal": "https://draft.spline.design/ta4A1XZ7CqUBOffa/scene.splinecode",
+    "image": "https://pomo-awards.s3.us-east-2.amazonaws.com/100-sessions.png",
+    "value": 100
+  }
+]

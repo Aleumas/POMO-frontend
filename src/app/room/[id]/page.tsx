@@ -5,6 +5,8 @@ import { useEffect, useState, useRef } from "react";
 import { useMachine } from "@xstate/react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import axios from "axios";
+import achievements from "../../../../public/achievements/milestones/file.json";
 
 import ClockFace from "@/components/ui/clock-face";
 import { Button } from "@/components/ui/button";
@@ -41,7 +43,7 @@ export default ({ params }: { params: { id: string } }) => {
   const router = useRouter();
 
   const [workPreset, setWorkPreset] = useState(25);
-  const [breakPreset, setBreakPreset] = useState(0.1);
+  const [breakPreset, setBreakPreset] = useState(5);
 
   const [otherParticipants, setOtherParticipants] = useState([]);
   const [progress, updateProgress] = useState(0);
@@ -149,6 +151,27 @@ export default ({ params }: { params: { id: string } }) => {
       socket.on(`sessionCompletion:${user.sub}`, () => {
         var chime = new Audio("../sounds/done.mp3");
         chime.play();
+        axios
+          .get(`http://localhost:3000/${user.sub}/total_sessions`)
+          .then((res) => {
+            const totalSessions = res.data as number;
+            achievements.forEach((achievement) => {
+              if (totalSessions == achievement.value) {
+                toast(
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={`../../../../achievements/milestones/thumbnails/${achievement.value}.png`}
+                      className="h-10 w-10"
+                    />
+                    <div className="flex flex-1 flex-col">
+                      <h1 className="font-bold">Achievement Unlocked!</h1>
+                      <h2>you have unlocked a new achievement.</h2>
+                    </div>
+                  </div>,
+                );
+              }
+            });
+          });
       });
       socket.on(`machineTransition:${user?.sub}`, (transition) => {
         send({ type: transition });
@@ -195,6 +218,14 @@ export default ({ params }: { params: { id: string } }) => {
               <SheetContent side="left">
                 <SheetHeader>
                   <SheetTitle>Options</SheetTitle>
+                  <Button
+                    className="mt-3 w-full"
+                    onClick={() => {
+                      router.push("http://localhost:3001/achievements");
+                    }}
+                  >
+                    Achievements
+                  </Button>
                   <Button
                     className="mt-3 w-full"
                     onClick={() => {
