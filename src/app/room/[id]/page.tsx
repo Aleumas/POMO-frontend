@@ -135,7 +135,7 @@ export default ({ params }: { params: { id: string } }) => {
             },
           },
           onAutoClose: () => {
-            socket.emit("declineSyncRequest", source.socketId);
+            socket.emit("declineSyncRequest", room, source.socketId);
           },
         });
       });
