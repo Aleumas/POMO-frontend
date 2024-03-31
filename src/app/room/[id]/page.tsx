@@ -124,6 +124,7 @@ export default ({ params }: { params: { id: string } }) => {
             toast(message);
         }
       });
+
       socket.on("showSyncRequest", (source) => {
         toast.message(`${source.displayName} wants to sync timers.`, {
           description: `User will be able to control your timer.`,
@@ -139,15 +140,18 @@ export default ({ params }: { params: { id: string } }) => {
           },
         });
       });
+
       socket.on("syncMachines", () => {
         socket.emit("syncMachines", actor.getSnapshot());
       });
+
       socket.on(`setMachineSnapshot:${user.sub}`, (snapshot) => {
         const transitions = transitionsToTargetState(snapshot.value);
         transitions.forEach((transition) => {
           send({ type: transition });
         });
       });
+
       socket.on(`sessionCompletion:${user.sub}`, () => {
         var chime = new Audio("../sounds/done.mp3");
         chime.play();
@@ -173,6 +177,7 @@ export default ({ params }: { params: { id: string } }) => {
             });
           });
       });
+
       socket.on(`machineTransition:${user?.sub}`, (transition) => {
         send({ type: transition });
         if (transition === TimerMachineTransition.stop) {
@@ -180,14 +185,18 @@ export default ({ params }: { params: { id: string } }) => {
           socket.emit("updateTimer", currentPresetRef.current * 60, user?.sub);
         }
       });
+
       socket.on("removeParticipant", (participant) => {
         setOtherParticipants((participants) =>
           participants.filter((p) => p.uid !== participant),
         );
       });
+
       socket.on("addExistingParticipants", (existingParticipants) => {
         setOtherParticipants(
-          existingParticipants.filter((p) => p.uid != user?.sub),
+          existingParticipants
+            .map(JSON.parse)
+            .filter((p) => p.uid != user?.sub),
         );
       });
     });
