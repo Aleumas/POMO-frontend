@@ -25,14 +25,17 @@ export default () => {
   const [totalSessionCount, setTotalSessionCount] = useState(0);
   const [isLoading, setLoadingState] = useState(true);
 
+  const serverBaseUrl =
+    process.env.MODE == "development"
+      ? process.env.SOCKET_DEVELOPMENT_SERVER_BASE_URL
+      : process.env.SOCKET_PRODUCTION_SERVER_BASE_URL;
+
   useEffect(() => {
     if (user) {
-      axios
-        .get(`http://localhost:3000/${user.sub}/total_sessions`)
-        .then((res) => {
-          setTotalSessionCount(res.data as number);
-          setLoadingState(false);
-        });
+      axios.get(serverBaseUrl + `/${user.sub}/total_sessions`).then((res) => {
+        setTotalSessionCount(res.data as number);
+        setLoadingState(false);
+      });
     }
   }, [user]);
 

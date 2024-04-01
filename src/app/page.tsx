@@ -4,11 +4,16 @@ import { useRouter } from "next/navigation";
 import Spline from "@splinetool/react-spline";
 import { v4 as uuidv4 } from "uuid";
 
+const baseUrl =
+  process.env.MODE == "development"
+    ? process.env.SOCKET_DEVELOPMENT_BASE_URL
+    : process.env.SOCKET_PRODUCTION_BASE_URL;
+
 export default () => {
   const router = useRouter();
   const createRoom = () => {
     const roomId = uuidv4();
-    router.push(`http://localhost:3001/room/${roomId}`);
+    router.push(baseUrl + `/room/${roomId}`);
   };
 
   return (

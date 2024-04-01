@@ -72,6 +72,15 @@ export default ({ params }: { params: { id: string } }) => {
   const currentSessionMachineRef = useRef(currentSessionMachineState);
   const isSocketConnected = useRef(false);
 
+  const serverBaseUrl =
+    process.env.MODE == "development"
+      ? process.env.SOCKET_DEVELOPMENT_SERVER_BASE_URL
+      : process.env.SOCKET_PRODUCTION_SERVER_BASE_URL;
+  const baseUrl =
+    process.env.MODE == "development"
+      ? process.env.SOCKET_DEVELOPMENT_BASE_URL
+      : process.env.SOCKET_PRODUCTION_BASE_URL;
+
   let room = params.id;
 
   useEffect(() => {
@@ -155,27 +164,25 @@ export default ({ params }: { params: { id: string } }) => {
       socket.on(`sessionCompletion:${user.sub}`, () => {
         var chime = new Audio("../sounds/done.mp3");
         chime.play();
-        axios
-          .get(`http://localhost:3000/${user.sub}/total_sessions`)
-          .then((res) => {
-            const totalSessions = res.data as number;
-            achievements.forEach((achievement) => {
-              if (totalSessions == achievement.value) {
-                toast(
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={`../../../../achievements/milestones/thumbnails/${achievement.value}.png`}
-                      className="h-10 w-10"
-                    />
-                    <div className="flex flex-1 flex-col">
-                      <h1 className="font-bold">Achievement Unlocked!</h1>
-                      <h2>you have unlocked a new achievement.</h2>
-                    </div>
-                  </div>,
-                );
-              }
-            });
+        axios.get(serverBaseUrl + `/${user.sub}/total_sessions`).then((res) => {
+          const totalSessions = res.data as number;
+          achievements.forEach((achievement) => {
+            if (totalSessions == achievement.value) {
+              toast(
+                <div className="flex items-center gap-4">
+                  <img
+                    src={`../../../../achievements/milestones/thumbnails/${achievement.value}.png`}
+                    className="h-10 w-10"
+                  />
+                  <div className="flex flex-1 flex-col">
+                    <h1 className="font-bold">Achievement Unlocked!</h1>
+                    <h2>you have unlocked a new achievement.</h2>
+                  </div>
+                </div>,
+              );
+            }
           });
+        });
       });
 
       socket.on(`machineTransition:${user?.sub}`, (transition) => {
@@ -230,7 +237,7 @@ export default ({ params }: { params: { id: string } }) => {
                   <Button
                     className="mt-3 w-full"
                     onClick={() => {
-                      router.push("http://localhost:3001/achievements");
+                      router.push(baseUrl + "/achievements");
                     }}
                   >
                     Achievements
@@ -238,7 +245,7 @@ export default ({ params }: { params: { id: string } }) => {
                   <Button
                     className="mt-3 w-full"
                     onClick={() => {
-                      router.push("http://localhost:3001/api/auth/logout");
+                      router.push(baseUrl + "/api/auth/logout");
                     }}
                   >
                     Logout

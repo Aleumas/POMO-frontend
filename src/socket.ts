@@ -1,9 +1,11 @@
 import { io } from "socket.io-client";
 
-const URL =
-  process.env.NODE_ENV === "production" ? "" : "http://localhost:3000";
+const serverUrl =
+  process.env.MODE == "development"
+    ? process.env.SOCKET_DEVELOPMENT_SERVER_BASE_URL
+    : process.env.SOCKET_PRODUCTION_SERVER_BASE_URL;
 
-export const socket = io(URL, {
+export const socket = io(serverUrl, {
   reconnection: true,
   reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
