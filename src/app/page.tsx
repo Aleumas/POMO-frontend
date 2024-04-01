@@ -1,16 +1,14 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import axios from "axios";
 import { useRouter } from "next/navigation";
 import Spline from "@splinetool/react-spline";
+import { v4 as uuidv4 } from "uuid";
 
 export default () => {
   const router = useRouter();
   const createRoom = () => {
-    axios.post("http://localhost:3000/room").then((res) => {
-      const roomId = res.data as string;
-      router.push(`http://localhost:3001/room/${roomId}`);
-    });
+    const roomId = uuidv4();
+    router.push(`http://localhost:3001/room/${roomId}`);
   };
 
   return (
