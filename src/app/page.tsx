@@ -6,8 +6,8 @@ import { v4 as uuidv4 } from "uuid";
 
 const baseUrl =
   process.env.MODE == "development"
-    ? process.env.SOCKET_DEVELOPMENT_BASE_URL
-    : process.env.SOCKET_PRODUCTION_BASE_URL;
+    ? process.env.DEVELOPMENT_BASE_URL
+    : process.env.PRODUCTION_BASE_URL;
 
 export default () => {
   const router = useRouter();

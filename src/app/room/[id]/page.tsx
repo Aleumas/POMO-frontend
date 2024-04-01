@@ -74,12 +74,12 @@ export default ({ params }: { params: { id: string } }) => {
 
   const serverBaseUrl =
     process.env.MODE == "development"
-      ? process.env.SOCKET_DEVELOPMENT_SERVER_BASE_URL
-      : process.env.SOCKET_PRODUCTION_SERVER_BASE_URL;
+      ? process.env.DEVELOPMENT_SERVER_BASE_URL
+      : process.env.PRODUCTION_SERVER_BASE_URL;
   const baseUrl =
     process.env.MODE == "development"
-      ? process.env.SOCKET_DEVELOPMENT_BASE_URL
-      : process.env.SOCKET_PRODUCTION_BASE_URL;
+      ? process.env.DEVELOPMENT_BASE_URL
+      : process.env.PRODUCTION_BASE_URL;
 
   let room = params.id;
 
