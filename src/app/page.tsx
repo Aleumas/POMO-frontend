@@ -13,7 +13,7 @@ export default () => {
   const router = useRouter();
   const createRoom = () => {
     const roomId = uuidv4();
-    router.push(baseUrl + `/room/${roomId}`);
+    router.push(`/room/${roomId}`);
   };
 
   return (
