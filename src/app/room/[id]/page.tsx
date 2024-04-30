@@ -40,11 +40,11 @@ import SessionMachine, {
 import { socket } from "@/socket";
 
 const serverBaseUrl =
-  process.env.MODE == "development"
+  process.env.NEXT_PUBLIC_MODE == "development"
     ? process.env.NEXT_PUBLIC_DEVELOPMENT_SERVER_BASE_URL
     : process.env.NEXT_PUBLIC_PRODUCTION_SERVER_BASE_URL;
 const baseUrl =
-  process.env.MODE == "development"
+  process.env.NEXT_PUBLIC_MODE == "development"
     ? process.env.NEXT_PUBLIC_DEVELOPMENT_BASE_URL
     : process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL;
 

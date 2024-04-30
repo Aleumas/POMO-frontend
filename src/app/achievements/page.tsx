@@ -26,7 +26,7 @@ export default () => {
   const [isLoading, setLoadingState] = useState(true);
 
   const serverBaseUrl =
-    process.env.MODE == "development"
+    process.env.NEXT_PUBLIC_MODE == "development"
       ? process.env.NEXT_PUBLIC_DEVELOPMENT_SERVER_BASE_URL
       : process.env.NEXT_PUBLIC_PRODUCTION_SERVER_BASE_URL;
 
