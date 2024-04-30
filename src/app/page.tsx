@@ -4,11 +4,6 @@ import { useRouter } from "next/navigation";
 import Spline from "@splinetool/react-spline";
 import { v4 as uuidv4 } from "uuid";
 
-const baseUrl =
-  process.env.MODE == "development"
-    ? process.env.DEVELOPMENT_BASE_URL
-    : process.env.PRODUCTION_BASE_URL;
-
 export default () => {
   const router = useRouter();
   const createRoom = () => {

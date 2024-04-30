@@ -5,8 +5,9 @@ import { useEffect, useState, useRef } from "react";
 import { useMachine } from "@xstate/react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import axios from "axios";
 import achievements from "../../../../public/achievements/milestones/file.json";
+
+import axios from "axios";
 
 import ClockFace from "@/components/ui/clock-face";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,15 @@ import SessionMachine, {
 } from "@/components/session-machine";
 
 import { socket } from "@/socket";
+
+const serverBaseUrl =
+  process.env.MODE == "development"
+    ? process.env.NEXT_PUBLIC_DEVELOPMENT_SERVER_BASE_URL
+    : process.env.NEXT_PUBLIC_PRODUCTION_SERVER_BASE_URL;
+const baseUrl =
+  process.env.MODE == "development"
+    ? process.env.NEXT_PUBLIC_DEVELOPMENT_BASE_URL
+    : process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL;
 
 export default ({ params }: { params: { id: string } }) => {
   const { user } = useUser();
@@ -71,15 +81,6 @@ export default ({ params }: { params: { id: string } }) => {
   const currentTimerMachineRef = useRef(currentTimerMachineState);
   const currentSessionMachineRef = useRef(currentSessionMachineState);
   const isSocketConnected = useRef(false);
-
-  const serverBaseUrl =
-    process.env.MODE == "development"
-      ? process.env.DEVELOPMENT_SERVER_BASE_URL
-      : process.env.PRODUCTION_SERVER_BASE_URL;
-  const baseUrl =
-    process.env.MODE == "development"
-      ? process.env.DEVELOPMENT_BASE_URL
-      : process.env.PRODUCTION_BASE_URL;
 
   let room = params.id;
 

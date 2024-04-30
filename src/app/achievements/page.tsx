@@ -27,8 +27,8 @@ export default () => {
 
   const serverBaseUrl =
     process.env.MODE == "development"
-      ? process.env.DEVELOPMENT_SERVER_BASE_URL
-      : process.env.PRODUCTION_SERVER_BASE_URL;
+      ? process.env.NEXT_PUBLIC_DEVELOPMENT_SERVER_BASE_URL
+      : process.env.NEXT_PUBLIC_PRODUCTION_SERVER_BASE_URL;
 
   useEffect(() => {
     if (user) {
