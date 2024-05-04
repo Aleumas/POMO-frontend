@@ -307,7 +307,6 @@ export default ({ params }: { params: { id: string } }) => {
                       ],
                     )
                   }
-                  disabled={!isSocketConnected.current}
                 >
                   Start
                 </Button>
