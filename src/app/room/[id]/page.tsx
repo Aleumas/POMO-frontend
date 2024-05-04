@@ -108,9 +108,11 @@ export default ({ params }: { params: { id: string } }) => {
   }, [snapshot]);
 
   useEffect(() => {
+    console.log("user mark 1");
     if (!user) {
       return;
     }
+    console.log("user mark 2");
 
     socket.connect();
     socket.on("connect", () => {
@@ -120,6 +122,7 @@ export default ({ params }: { params: { id: string } }) => {
 
       isSocketConnected.current = true;
 
+      console.log("connected to ", room);
       socket.emit("joinRoom", room, user.name, user.picture, user.sub);
 
       socket.on("showToast", (message, type) => {
@@ -307,6 +310,7 @@ export default ({ params }: { params: { id: string } }) => {
                       ],
                     )
                   }
+                  disabled={!isSocketConnected.current}
                 >
                   Start
                 </Button>
