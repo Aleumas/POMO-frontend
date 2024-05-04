@@ -115,6 +115,11 @@ export default ({ params }: { params: { id: string } }) => {
     console.log("user mark 2");
 
     socket.connect();
+
+    socket.on("connect_error", (err) => {
+      console.log(`connect_error due to ${err}`);
+    });
+
     socket.on("connect", () => {
       if (isSocketConnected.current) {
         return;
