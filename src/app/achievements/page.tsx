@@ -32,7 +32,7 @@ export default () => {
 
   useEffect(() => {
     if (user) {
-      axios.get(serverBaseUrl + `/${user.sub}/total_sessions`).then((res) => {
+      axios.get(`${serverBaseUrl}/${user.sub}/total_sessions`).then((res) => {
         setTotalSessionCount(res.data as number);
         setLoadingState(false);
       });
