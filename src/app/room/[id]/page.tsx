@@ -108,11 +108,9 @@ export default ({ params }: { params: { id: string } }) => {
   }, [snapshot]);
 
   useEffect(() => {
-    console.log("user mark 1");
     if (!user) {
       return;
     }
-    console.log("user mark 2");
 
     socket.connect();
 
