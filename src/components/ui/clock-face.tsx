@@ -27,6 +27,7 @@ export default ({
       if (updateProgress != null) {
         updateProgress(time);
       }
+      document.title = secondsToTime(time);
       setTimerDigits(secondsToTime(time).split(""));
     });
 
