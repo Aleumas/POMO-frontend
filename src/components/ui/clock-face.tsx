@@ -8,12 +8,14 @@ export default ({
   animated,
   participantId,
   updateProgress,
+  updateTitle,
 }: {
   size: string;
   preset: number;
   animated: boolean;
   participantId?: string;
-  updateProgress?: (timer: number) => void;
+  updateProgress?: (time: number) => void;
+  updateTitle?: (formattedTime: string) => void;
 }) => {
   const [timerDigits, setTimerDigits] = useState(
     secondsToTime(preset * 60).split(""),
@@ -24,10 +26,8 @@ export default ({
 
   useEffect(() => {
     socket.on(`timeUpdate:${participantId}`, (time) => {
-      if (updateProgress != null) {
-        updateProgress(time);
-      }
-      document.title = secondsToTime(time);
+      updateProgress?.(time);
+      updateTitle?.(secondsToTime(time));
       setTimerDigits(secondsToTime(time).split(""));
     });
 

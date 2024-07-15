@@ -311,6 +311,9 @@ export default ({ params }: { params: { id: string } }) => {
                     const preset = currentPresetRef.current * 60;
                     updateProgress(((preset - time) / preset) * 100);
                   }}
+                  updateTitle={(formattedTime) => {
+                    document.title = formattedTime;
+                  }}
                 />
                 {currentTimerMachineState === TimerMachineState.idle && (
                   <Button
