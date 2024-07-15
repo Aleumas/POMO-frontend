@@ -3,11 +3,14 @@
 import { useUser } from "@auth0/nextjs-auth0/client";
 import { useEffect, useState, useRef } from "react";
 import { useMachine } from "@xstate/react";
-import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import achievements from "../../../../public/achievements/milestones/file.json";
 
+import { toast } from "sonner";
+import { Share2Icon } from "@radix-ui/react-icons";
+import { RWebShare } from "react-web-share";
 import axios from "axios";
+
+import achievements from "../../../../public/achievements/milestones/file.json";
 
 import ClockFace from "@/components/ui/clock-face";
 import { Button } from "@/components/ui/button";
@@ -227,168 +230,183 @@ export default ({ params }: { params: { id: string } }) => {
           direction={directionParticipantPanelDirection}
           className="w-full rounded-lg border"
         >
-          <ResizablePanel
-            defaultSize={80}
-            className="flex flex-col items-center justify-center gap-5"
-          >
-            <Sheet>
-              <SheetTrigger>
-                <Avatar className="fixed left-5 top-5">
-                  <AvatarImage src={user?.picture} />
-                  <AvatarFallback />
-                </Avatar>
-              </SheetTrigger>
-              <SheetContent side="left">
-                <SheetHeader>
-                  <SheetTitle>Options</SheetTitle>
-                  <Button
-                    className="mt-3 w-full"
-                    onClick={() => {
-                      router.push(baseUrl + "/achievements");
-                    }}
-                  >
-                    Achievements
-                  </Button>
-                  <Button
-                    className="mt-3 w-full"
-                    onClick={() => {
-                      router.push(baseUrl + "/api/auth/logout");
-                    }}
-                  >
-                    Logout
-                  </Button>
-                </SheetHeader>
-              </SheetContent>
-            </Sheet>
-
-            <h1
-              className={`${currentSessionMachineState === SessionMachineState.work ? "decoration-rose-600" : "decoration-green-600"} text-lg font-semibold underline decoration-solid decoration-4 underline-offset-8`}
-            >
-              {currentSessionMachineState}
-            </h1>
-            <div className="flex flex-col items-center gap-5">
-              <Progress
-                hidden={
-                  currentTimerMachineState != TimerMachineState.running &&
-                  currentTimerMachineState != TimerMachineState.paused
-                }
-                value={progress}
-                className="w-full"
-                color={
-                  currentSessionMachineState === SessionMachineState.work
-                    ? "bg-rose-600"
-                    : "bg-green-600"
-                }
-              />
-              <ClockFace
-                size="text-8xl"
-                participantId={user?.sub}
-                preset={currentPreset}
-                animated={true}
-                updateProgress={(time) => {
-                  if (
-                    !(
-                      currentTimerMachineRef.current ===
-                      TimerMachineState.running
-                    )
-                  ) {
-                    return;
-                  }
-                  const preset = currentPresetRef.current * 60;
-                  updateProgress(((preset - time) / preset) * 100);
+          <ResizablePanel defaultSize={80} className="flex flex-col">
+            <div className="flex flex-row justify-between">
+              <Sheet>
+                <SheetTrigger>
+                  <Avatar className="m-5">
+                    <AvatarImage src={user?.picture} />
+                    <AvatarFallback />
+                  </Avatar>
+                </SheetTrigger>
+                <SheetContent side="left">
+                  <SheetHeader>
+                    <SheetTitle>Options</SheetTitle>
+                    <Button
+                      className="mt-3 w-full"
+                      onClick={() => {
+                        router.push(`${baseUrl}/achievements`);
+                      }}
+                    >
+                      Achievements
+                    </Button>
+                    <Button
+                      className="mt-3 w-full"
+                      onClick={() => {
+                        router.push(`${baseUrl}/api/auth/logout`);
+                      }}
+                    >
+                      Logout
+                    </Button>
+                  </SheetHeader>
+                </SheetContent>
+              </Sheet>
+              <RWebShare
+                data={{
+                  text: "Join a shared pomodoro session on Tomatera",
+                  url: window.location.href,
+                  title: "Link to shared pomodoro session",
                 }}
-              />
-              {currentTimerMachineState === TimerMachineState.idle && (
-                <Button
-                  className="w-full"
-                  onClick={() =>
-                    socket.emit(
-                      "startTimer",
-                      user?.sub,
-                      currentPreset * 60,
-                      TimerMachineTransition.start,
-                      [
-                        nextSessionTransitionRef.current,
-                        TimerMachineTransition.stop,
-                      ],
-                    )
-                  }
-                  disabled={!isSocketConnected.current}
-                >
-                  Start
+              >
+                <Button className="m-5" variant="outline" size="icon">
+                  <Share2Icon className="h-4 w-4" />
                 </Button>
-              )}
-
-              {(currentTimerMachineState === TimerMachineState.running ||
-                currentTimerMachineState === TimerMachineState.paused) && (
-                <div className="flex w-full justify-center gap-5">
-                  {currentTimerMachineState == TimerMachineState.running && (
-                    <Button
-                      onClick={() => socket.emit("pauseTimer", user.sub)}
-                      disabled={!isSocketConnected.current}
-                      className="flex-1"
-                    >
-                      Pause
-                    </Button>
-                  )}
-
-                  {currentTimerMachineState === TimerMachineState.paused && (
-                    <Button
-                      onClick={() =>
-                        socket.emit(
-                          "resumeTimer",
-                          user.sub,
-                          TimerMachineTransition.resume,
-                          [
-                            nextSessionTransitionRef.current,
-                            TimerMachineTransition.stop,
-                          ],
-                        )
-                      }
-                      disabled={!isSocketConnected.current}
-                      className="flex-1"
-                    >
-                      resume
-                    </Button>
-                  )}
-
-                  <Button
-                    onClick={() => {
-                      socket.emit("stopTimer", user.sub, [
-                        nextSessionTransitionRef.current,
-                        TimerMachineTransition.stop,
-                      ]);
-                    }}
-                    disabled={!isSocketConnected.current}
-                    className="flex-1"
-                  >
-                    Stop
-                  </Button>
-                </div>
-              )}
-              {currentTimerMachineState === TimerMachineState.idle && (
-                <div className="flex w-full flex-col gap-3">
-                  {currentSessionMachineState === SessionMachineState.work && (
-                    <SessionSlider
-                      value={workPreset}
-                      color="bg-rose-600"
-                      onChange={(newValue) => {
-                        setWorkPreset(newValue);
-                      }}
-                    />
-                  )}
-                  {currentSessionMachineState === SessionMachineState.break && (
-                    <SessionSlider
-                      value={breakPreset}
-                      color="bg-green-600"
-                      onChange={(newValue) => {
-                        setBreakPreset(newValue);
-                      }}
-                    />
-                  )}
-                </div>
-              )}
+              </RWebShare>
             </div>
+            <div className="flex-1" />
+            <div className="flex flex-col items-center justify-center gap-5">
+              <h1
+                className={`${currentSessionMachineState === SessionMachineState.work ? "decoration-rose-600" : "decoration-green-600"} text-lg font-semibold underline decoration-solid decoration-4 underline-offset-8`}
+              >
+                {currentSessionMachineState}
+              </h1>
+              <div className="flex flex-col items-center gap-5">
+                <Progress
+                  hidden={
+                    currentTimerMachineState != TimerMachineState.running &&
+                    currentTimerMachineState != TimerMachineState.paused
+                  }
+                  value={progress}
+                  className="w-full"
+                  color={
+                    currentSessionMachineState === SessionMachineState.work
+                      ? "bg-rose-600"
+                      : "bg-green-600"
+                  }
+                />
+                <ClockFace
+                  size="text-8xl"
+                  participantId={user?.sub}
+                  preset={currentPreset}
+                  animated={true}
+                  updateProgress={(time) => {
+                    if (
+                      !(
+                        currentTimerMachineRef.current ===
+                        TimerMachineState.running
+                      )
+                    ) {
+                      return;
+                    }
+                    const preset = currentPresetRef.current * 60;
+                    updateProgress(((preset - time) / preset) * 100);
+                  }}
+                />
+                {currentTimerMachineState === TimerMachineState.idle && (
+                  <Button
+                    className="w-full"
+                    onClick={() =>
+                      socket.emit(
+                        "startTimer",
+                        user?.sub,
+                        currentPreset * 60,
+                        TimerMachineTransition.start,
+                        [
+                          nextSessionTransitionRef.current,
+                          TimerMachineTransition.stop,
+                        ],
+                      )
+                    }
+                    disabled={!isSocketConnected.current}
+                  >
+                    Start
+                  </Button>
+                )}
+
+                {(currentTimerMachineState === TimerMachineState.running ||
+                  currentTimerMachineState === TimerMachineState.paused) && (
+                  <div className="flex w-full justify-center gap-5">
+                    {currentTimerMachineState == TimerMachineState.running && (
+                      <Button
+                        onClick={() => socket.emit("pauseTimer", user.sub)}
+                        disabled={!isSocketConnected.current}
+                        className="flex-1"
+                      >
+                        Pause
+                      </Button>
+                    )}
+
+                    {currentTimerMachineState === TimerMachineState.paused && (
+                      <Button
+                        onClick={() =>
+                          socket.emit(
+                            "resumeTimer",
+                            user.sub,
+                            TimerMachineTransition.resume,
+                            [
+                              nextSessionTransitionRef.current,
+                              TimerMachineTransition.stop,
+                            ],
+                          )
+                        }
+                        disabled={!isSocketConnected.current}
+                        className="flex-1"
+                      >
+                        resume
+                      </Button>
+                    )}
+
+                    <Button
+                      onClick={() => {
+                        socket.emit("stopTimer", user.sub, [
+                          nextSessionTransitionRef.current,
+                          TimerMachineTransition.stop,
+                        ]);
+                      }}
+                      disabled={!isSocketConnected.current}
+                      className="flex-1"
+                    >
+                      Stop
+                    </Button>
+                  </div>
+                )}
+                {currentTimerMachineState === TimerMachineState.idle && (
+                  <div className="flex w-full flex-col gap-3">
+                    {currentSessionMachineState ===
+                      SessionMachineState.work && (
+                      <SessionSlider
+                        value={workPreset}
+                        color="bg-rose-600"
+                        onChange={(newValue) => {
+                          setWorkPreset(newValue);
+                        }}
+                      />
+                    )}
+                    {currentSessionMachineState ===
+                      SessionMachineState.break && (
+                      <SessionSlider
+                        value={breakPreset}
+                        color="bg-green-600"
+                        onChange={(newValue) => {
+                          setBreakPreset(newValue);
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex-1" />
           </ResizablePanel>
           {otherParticipants.length > 0 && <ResizableHandle withHandle />}
           {otherParticipants.length > 0 && (
