@@ -6,11 +6,11 @@ import { useMachine } from "@xstate/react";
 import { useRouter } from "next/navigation";
 
 import { toast } from "sonner";
-import { Share2Icon } from "@radix-ui/react-icons";
-import { RWebShare } from "react-web-share";
 import axios from "axios";
 
 import achievements from "../../../../public/achievements/milestones/file.json";
+
+import { Share2Icon } from "@radix-ui/react-icons";
 
 import ClockFace from "@/components/ui/clock-face";
 import { Button } from "@/components/ui/button";
@@ -261,17 +261,17 @@ export default ({ params }: { params: { id: string } }) => {
                   </SheetHeader>
                 </SheetContent>
               </Sheet>
-              <RWebShare
-                data={{
-                  text: "Join a shared pomodoro session on Tomatera",
-                  url: window.location.href,
-                  title: "Link to shared pomodoro session",
+              <Button
+                className="m-5"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  toast.success("Link copied to clipboard!");
                 }}
               >
-                <Button className="m-5" variant="outline" size="icon">
-                  <Share2Icon className="h-4 w-4" />
-                </Button>
-              </RWebShare>
+                <Share2Icon className="h-4 w-4" />
+              </Button>
             </div>
             <div className="flex-1" />
             <div className="flex flex-col items-center justify-center gap-5">
