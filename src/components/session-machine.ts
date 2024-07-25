@@ -28,6 +28,7 @@ const TimerMachine = {
   initial: TimerMachineState.idle,
   states: {
     [TimerMachineState.idle]: {
+      entry: "update_hero_state",
       on: {
         [TimerMachineTransition.start]: {
           target: TimerMachineState.running,
@@ -35,6 +36,7 @@ const TimerMachine = {
       },
     },
     [TimerMachineState.running]: {
+      entry: "update_hero_state",
       on: {
         [TimerMachineTransition.pause]: {
           target: TimerMachineState.paused,
@@ -45,6 +47,7 @@ const TimerMachine = {
       },
     },
     [TimerMachineState.paused]: {
+      entry: "update_hero_state",
       on: {
         [TimerMachineTransition.resume]: {
           target: TimerMachineState.running,
@@ -57,28 +60,77 @@ const TimerMachine = {
   },
 };
 
-const SessionMachine = createMachine({
-  id: "session",
-  initial: SessionMachineState.work,
-  states: {
-    [SessionMachineState.work]: {
-      on: {
-        [SessionMachineTransition.break]: {
-          target: SessionMachineState.break,
+let attackingInterval = null;
+
+const startAttacking = () => {
+  attackingInterval = setInterval(function () {
+    if (window[0].change_state) {
+      window[0].change_state("Attack");
+    }
+  }, 5000);
+};
+
+const stopAttacking = () => {
+  clearInterval(attackingInterval);
+  attackingInterval = null;
+};
+
+const SessionMachine = createMachine(
+  {
+    id: "session",
+    initial: SessionMachineState.work,
+    states: {
+      [SessionMachineState.work]: {
+        on: {
+          [SessionMachineTransition.break]: {
+            target: SessionMachineState.break,
+          },
         },
+        ...TimerMachine,
       },
-      ...TimerMachine,
-    },
-    [SessionMachineState.break]: {
-      on: {
-        [SessionMachineTransition.work]: {
-          target: SessionMachineState.work,
+      [SessionMachineState.break]: {
+        on: {
+          [SessionMachineTransition.work]: {
+            target: SessionMachineState.work,
+          },
         },
+        ...TimerMachine,
       },
-      ...TimerMachine,
     },
   },
-});
+  {
+    actions: {
+      update_hero_state(context) {
+        setTimeout(() => {
+          let snapshot = context.self.getSnapshot().value;
+          const sessionState = Object.keys(snapshot)[0];
+          const timerState = Object.values(snapshot)[0];
+          console.log(`session: ${sessionState} \ntimer: ${timerState}`);
+          if (window[0].change_state) {
+            if (timerState == "idle") {
+              window[0].change_state("Idle");
+              if (sessionState == "break") {
+                window[0].change_state("Cheer");
+                stopAttacking();
+              }
+            }
+            if (sessionState == "work" && timerState == "running") {
+              window[0].change_state("Run");
+              startAttacking();
+            }
+            if (sessionState == "break" && timerState == "running") {
+              window[0].change_state("Rest");
+            }
+            if (timerState == "paused") {
+              window[0].change_state("Idle");
+              stopAttacking();
+            }
+          }
+        }, 0);
+      },
+    },
+  },
+);
 
 export const transitionsToTargetState = (targetState: { string: string }) => {
   const sessionState = Object.keys(targetState)[0];
