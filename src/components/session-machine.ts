@@ -64,8 +64,9 @@ let attackingInterval = null;
 
 const startAttacking = () => {
   attackingInterval = setInterval(function () {
-    if (window[0].change_state) {
-      window[0].change_state("Attack");
+    const windowActions = window[0] as any;
+    if (windowActions.change_state) {
+      windowActions.change_state("Attack");
     }
   }, 5000);
 };
@@ -105,24 +106,25 @@ const SessionMachine = createMachine(
           let snapshot = context.self.getSnapshot().value;
           const sessionState = Object.keys(snapshot)[0];
           const timerState = Object.values(snapshot)[0];
-          console.log(`session: ${sessionState} \ntimer: ${timerState}`);
-          if (window[0].change_state) {
+          const windowActions = window[0] as any;
+
+          if (windowActions.change_state) {
             if (timerState == "idle") {
-              window[0].change_state("Idle");
+              windowActions.change_state("Idle");
               if (sessionState == "break") {
-                window[0].change_state("Cheer");
+                windowActions.change_state("Cheer");
                 stopAttacking();
               }
             }
             if (sessionState == "work" && timerState == "running") {
-              window[0].change_state("Run");
+              windowActions.change_state("Run");
               startAttacking();
             }
             if (sessionState == "break" && timerState == "running") {
-              window[0].change_state("Rest");
+              windowActions.change_state("Rest");
             }
             if (timerState == "paused") {
-              window[0].change_state("Idle");
+              windowActions.change_state("Idle");
               stopAttacking();
             }
           }
