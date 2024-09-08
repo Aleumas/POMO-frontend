@@ -32,7 +32,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-import GodotEmbed from "@/components/godot";
 import SessionMachine, {
   TimerMachineState,
   TimerMachineTransition,
@@ -275,7 +274,6 @@ export default ({ params }: { params: { id: string } }) => {
             </div>
             <div className="flex-1" />
             <div className="flex flex-col items-center justify-center gap-5">
-              <GodotEmbed />
               <h1
                 className={`${currentSessionMachineState === SessionMachineState.work ? "decoration-rose-600" : "decoration-green-600"} text-lg font-semibold underline decoration-solid decoration-4 underline-offset-8`}
               >
