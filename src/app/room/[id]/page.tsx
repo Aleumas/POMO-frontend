@@ -1,6 +1,5 @@
 "use client";
 
-import { useUser } from "@auth0/nextjs-auth0/client";
 import { useEffect, useState, useRef } from "react";
 import { useMachine } from "@xstate/react";
 import { useRouter } from "next/navigation";

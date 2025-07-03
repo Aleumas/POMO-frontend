@@ -1,11 +1,9 @@
-import { UserProvider } from "@auth0/nextjs-auth0/client";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
 export default function App({ children }: { children: React.ReactNode }) {
   return (
-    <UserProvider>
       <html>
         <body>
           <ThemeProvider
@@ -19,6 +17,5 @@ export default function App({ children }: { children: React.ReactNode }) {
           <Toaster richColors />
         </body>
       </html>
-    </UserProvider>
   );
 }

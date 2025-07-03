@@ -8,7 +8,6 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { useUser } from "@auth0/nextjs-auth0/client";
 import {
   SessionMachineState,
   TimerMachineState,
