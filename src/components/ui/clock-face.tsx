@@ -1,4 +1,3 @@
-import { socket } from "@/socket";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -7,6 +6,7 @@ export default ({
   preset = 0,
   animated,
   participantId,
+  remainingTime,
   updateProgress,
   updateTitle,
 }: {
@@ -14,27 +14,24 @@ export default ({
   preset: number;
   animated: boolean;
   participantId?: string;
+  remainingTime?: number;
   updateProgress?: (time: number) => void;
   updateTitle?: (formattedTime: string) => void;
 }) => {
   const [timerDigits, setTimerDigits] = useState(
     secondsToTime(preset * 60).split(""),
   );
+  
   useEffect(() => {
-    socket.emit("updateTimer", preset * 60, participantId);
-  }, [preset]);
-
-  useEffect(() => {
-    socket.on(`timeUpdate:${participantId}`, (time) => {
-      updateProgress?.(time);
-      updateTitle?.(secondsToTime(time));
-      setTimerDigits(secondsToTime(time).split(""));
-    });
-
-    return () => {
-      socket.off(`timeUpdate:${participantId}`);
-    };
-  }, [participantId]);
+    if (remainingTime !== undefined) {
+      const formattedTime = secondsToTime(remainingTime);
+      setTimerDigits(formattedTime.split(""));
+    } else {
+      // Use preset time when remainingTime is not provided
+      const formattedTime = secondsToTime(preset * 60);
+      setTimerDigits(formattedTime.split(""));
+    }
+  }, [remainingTime, preset]);
 
   return (
     <div className="flex grow items-center justify-center">
@@ -67,10 +64,10 @@ export default ({
 };
 
 const secondsToTime = (total_seconds: number) => {
-  let minutes = Math.floor(total_seconds / 60);
-  let seconds = total_seconds % 60;
+  const minutes = Math.floor(total_seconds / 60);
+  const seconds = total_seconds % 60;
 
-  let formatted_time =
+  const formatted_time =
     String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
   return formatted_time;
 };

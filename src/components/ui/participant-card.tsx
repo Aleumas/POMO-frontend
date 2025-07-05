@@ -1,7 +1,6 @@
 import ClockFace from "./clock-face";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
-import { socket } from "@/socket";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -13,8 +12,11 @@ import {
   TimerMachineState,
   SessionMachineTransition,
   TimerMachineTransition,
+} from "@/lib/session-machine-types";
+import {
   transitionsToTargetState,
-} from "@/components/session-machine";
+} from "@/lib/session-machine-utils";
+import {useAuth} from "@/app/providers/AuthContext";
 
 export default ({
   participant,
@@ -23,6 +25,7 @@ export default ({
   avatar,
   displayName,
   preset = 0,
+  machineState,
 }: {
   participant: string;
   participantSocket: string;
@@ -30,14 +33,16 @@ export default ({
   room: string;
   displayName: string;
   preset?: number;
+  machineState?: any;
 }) => {
-  const { user, isLoading } = useUser();
+  const { user, loading } = useAuth();
   const [sessionMachineState, setSessionMachineState] =
     useState<SessionMachineState>(SessionMachineState.work);
   const [timerMachineState, setTimerMachineState] = useState<TimerMachineState>(
     TimerMachineState.idle,
   );
   const [inSync, setSyncStatus] = useState(false);
+  const [remainingTime, setRemainingTime] = useState(0);
   const modeBorderColor = {
     idle: "border-white",
     running:
@@ -67,28 +72,81 @@ export default ({
     }
   };
 
+  // Update state from machineState prop
   useEffect(() => {
-    socket.on(`machineTransition:${participant}`, (transition) => {
-      updateMachineState(transition);
-    });
+    if (machineState && machineState.value) {
+      const sessionState = typeof machineState.value === 'string' ? machineState.value : Object.keys(machineState.value)[0];
+      const timerState = typeof machineState.value === 'string' ? 'idle' : Object.values(machineState.value)[0];
+      
+      if (sessionState === SessionMachineState.work) {
+        setSessionMachineState(SessionMachineState.work);
+      } else if (sessionState === SessionMachineState.break) {
+        setSessionMachineState(SessionMachineState.break);
+      }
+      
+      if (timerState === TimerMachineState.running) {
+        setTimerMachineState(TimerMachineState.running);
+      } else if (timerState === TimerMachineState.paused) {
+        setTimerMachineState(TimerMachineState.paused);
+      } else {
+        setTimerMachineState(TimerMachineState.idle);
+      }
+      
+      if (machineState.context && machineState.context.remainingTime) {
+        setRemainingTime(machineState.context.remainingTime);
+      }
+    }
+  }, [machineState]);
 
-    socket.on(`setMachineSnapshot:${participant}`, (snapshot) => {
-      const transitions = transitionsToTargetState(snapshot.value);
-      transitions.forEach((transition) => {
-        updateMachineState(transition);
-      });
-    });
+  // Socket event listeners - disabled for clean approach
+  // useEffect(() => {
+  //   socket.on(`machineStateUpdate:${participant}`, (data) => {
+  //     if (data.state && data.state.value) {
+  //       const sessionState = typeof data.state.value === 'string' ? data.state.value : Object.keys(data.state.value)[0];
+  //       const timerState = typeof data.state.value === 'string' ? 'idle' : Object.values(data.state.value)[0];
+  //       
+  //       if (sessionState === SessionMachineState.work) {
+  //         setSessionMachineState(SessionMachineState.work);
+  //       } else if (sessionState === SessionMachineState.break) {
+  //         setSessionMachineState(SessionMachineState.break);
+  //       }
+  //       
+  //       if (timerState === TimerMachineState.running) {
+  //         setTimerMachineState(TimerMachineState.running);
+  //       } else if (timerState === TimerMachineState.paused) {
+  //         setTimerMachineState(TimerMachineState.paused);
+  //       } else {
+  //         setTimerMachineState(TimerMachineState.idle);
+  //       }
+  //       
+  //       if (data.state.context && data.state.context.remainingTime) {
+  //         setRemainingTime(data.state.context.remainingTime);
+  //       }
+  //     }
+  //   });
 
-    socket.on(`syncStatusUpdate:${participant}`, (status) => {
-      setSyncStatus(status);
-    });
+  //   socket.on(`machineTransition:${participant}`, (transition) => {
+  //     updateMachineState(transition);
+  //   });
 
-    return () => {
-      socket.off(`machineTransition:${participant}`);
-      socket.off(`setMachineSnapshot:${participant}`);
-      socket.off(`syncStatusUpdate:${participant}`);
-    };
-  }, [participant]);
+  //   socket.on(`setMachineSnapshot:${participant}`, (snapshot) => {
+  //     const transitions = transitionsToTargetState(snapshot.value);
+  //     transitions.forEach((transition) => {
+  //       updateMachineState(transition);
+  //     });
+  //   });
+
+  //   socket.on(`syncStatusUpdate:${participant}`, (status) => {
+  //     setSyncStatus(status);
+  //   });
+
+  //   return () => {
+  //     socket.off(`machineStateUpdate:${participant}`);
+  //     socket.off(`machineTransition:${participant}`);
+  //     socket.off(`setMachineSnapshot:${participant}`);
+  //     socket.off(`syncStatusUpdate:${participant}`);
+  //   };
+  // }, [participant]);
 
   return (
     <>
@@ -104,21 +162,23 @@ export default ({
             size="text-xl"
             participantId={participant}
             preset={preset}
+            remainingTime={remainingTime}
             animated={false}
           />
+          <div className="text-xs text-center">
+            {displayName}
+          </div>
+          <div className="text-xs text-center capitalize">
+            {sessionMachineState}
+          </div>
         </ContextMenuTrigger>
 
         <ContextMenuContent className="w-30">
           <ContextMenuItem
             inset
             onClick={() => {
-              if (!isLoading && user) {
-                if (inSync) {
-                  socket.emit("unsync", room, participantSocket);
-                } else {
-                  socket.emit("syncRequest", room, participantSocket);
-                }
-              }
+              // Socket sync functionality disabled for clean approach
+              console.log("Sync functionality disabled in clean mode");
             }}
           >
             {inSync ? "Unsync" : "Sync"}

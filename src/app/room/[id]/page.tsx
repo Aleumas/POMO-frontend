@@ -5,9 +5,6 @@ import { useMachine } from "@xstate/react";
 import { useRouter } from "next/navigation";
 
 import { toast } from "sonner";
-import axios from "axios";
-
-import achievements from "../../../../public/achievements/milestones/file.json";
 
 import { Share2Icon } from "@radix-ui/react-icons";
 
@@ -18,9 +15,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import ParticipantCard from "@/components/ui/participant-card";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import SessionSlider from "@/components/ui/session-slider";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -30,210 +25,202 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import ParticipantsPanel from "@/components/ui/participants-panel";
 
-import SessionMachine, {
+import SessionMachine from "@/lib/session-machine";
+import {
   TimerMachineState,
   TimerMachineTransition,
   SessionMachineState,
   SessionMachineTransition,
-  transitionsToTargetState,
-} from "@/components/session-machine";
+} from "@/lib/session-machine-types";
+import {
+  getCurrentTimerState,
+  getCurrentSessionState,
+  formatTime,
+} from "@/lib/session-machine-utils";
 
-import { socket } from "@/socket";
+import { useAuth } from '@/app/providers/AuthContext';
+import { socket } from '@/socket';
 
-const serverBaseUrl =
-  process.env.NEXT_PUBLIC_MODE == "development"
-    ? process.env.NEXT_PUBLIC_DEVELOPMENT_SERVER_BASE_URL
-    : process.env.NEXT_PUBLIC_PRODUCTION_SERVER_BASE_URL;
 const baseUrl =
   process.env.NEXT_PUBLIC_MODE == "development"
     ? process.env.NEXT_PUBLIC_DEVELOPMENT_BASE_URL
     : process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL;
 
 export default ({ params }: { params: { id: string } }) => {
-  const { user } = useUser();
+  const { user, loading } = useAuth();
   const router = useRouter();
+  const room = params.id;
 
   const [workPreset, setWorkPreset] = useState(25);
   const [breakPreset, setBreakPreset] = useState(5);
-
-  const [otherParticipants, setOtherParticipants] = useState([]);
   const [progress, updateProgress] = useState(0);
-  const [
-    directionParticipantPanelDirection,
-    setDirectionParticipantPanelDirection,
-  ] = useState<Direction>("vertical");
+  const [isConnected, setIsConnected] = useState(socket.connected);
+  const [isRoomJoined, setIsRoomJoined] = useState(false);
+  const [hasOtherParticipants, setHasOtherParticipants] = useState(false);
 
   const [snapshot, send, actor] = useMachine(SessionMachine);
 
-  const currentTimerMachineState = Object.values(snapshot.value)[0];
-  const currentSessionMachineState = Object.keys(snapshot.value)[0];
-  const nextSessionTransition =
-    currentSessionMachineState == SessionMachineState.work
-      ? SessionMachineTransition.break
-      : SessionMachineTransition.work;
+  useEffect(() => {
+    function onConnect() {
+      setIsConnected(true);
+    }
 
-  var currentPreset =
+    function onDisconnect() {
+      setIsConnected(false);
+      setIsRoomJoined(false);
+    }
+
+    function onJoinedRoom(data) {
+      setIsRoomJoined(true);
+    }
+
+    function onError(error) {
+      console.error('Socket error:', error);
+    }
+
+    function onAddExistingParticipants(existingParticipants) {
+      const parsedParticipants = existingParticipants
+        .map(p => JSON.parse(p))
+        .filter(p => p.uid !== user?.id);
+      
+      const uniqueParticipants = Array.from(
+        parsedParticipants.reduce((map, participant) => {
+          map.set(participant.uid, participant);
+          return map;
+        }, new Map())
+      ).map(([_, participant]) => participant);
+      
+      setHasOtherParticipants(uniqueParticipants.length > 0);
+    }
+
+
+
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('joinedRoom', onJoinedRoom);
+    socket.on('error', onError);
+    socket.on('addExistingParticipants', onAddExistingParticipants);
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('joinedRoom', onJoinedRoom);
+      socket.off('error', onError);
+      socket.off('addExistingParticipants', onAddExistingParticipants);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isConnected && user?.id && room && !isRoomJoined) {
+      const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email || 'user';
+      const avatar = user.user_metadata?.picture || user.user_metadata?.avatar_url || '';
+      
+      socket.emit('joinRoom', room, displayName, avatar, user.id);
+    }
+  }, [isConnected, user?.id, room, isRoomJoined]);
+
+  useEffect(() => {
+    if (user?.id) {
+      send({ type: 'SET_USER_ID', userId: user.id });
+    }
+  }, [user?.id, send]);
+
+  useEffect(() => {
+    if (room) {
+      send({ type: 'SET_ROOM_ID', roomId: room });
+    }
+  }, [room, send]);
+
+  const currentTimerMachineState = getCurrentTimerState(snapshot);
+  const currentSessionMachineState = getCurrentSessionState(snapshot);
+
+  const currentPreset =
     currentSessionMachineState == SessionMachineState.work
       ? workPreset
       : breakPreset;
 
-  const currentPresetRef = useRef(currentPreset);
-  const nextSessionTransitionRef = useRef(nextSessionTransition);
-  const currentTimerMachineRef = useRef(currentTimerMachineState);
-  const currentSessionMachineRef = useRef(currentSessionMachineState);
-  const isSocketConnected = useRef(false);
-
-  let room = params.id;
+  useEffect(() => {
+    if (currentSessionMachineState === SessionMachineState.work) {
+      send({ type: 'SET_WORK_DURATION', duration: workPreset * 60 });
+    }
+  }, [workPreset, currentSessionMachineState, send]);
 
   useEffect(() => {
-    function handleResize() {
-      if (window.innerWidth < 768) {
-        setDirectionParticipantPanelDirection("vertical");
-      } else {
-        setDirectionParticipantPanelDirection("horizontal");
-      }
+    if (currentSessionMachineState === SessionMachineState.break) {
+      send({ type: 'SET_BREAK_DURATION', duration: breakPreset * 60 });
     }
+  }, [breakPreset, currentSessionMachineState, send]);
 
-    window.addEventListener("resize", handleResize);
+  useEffect(() => {
+    if (currentTimerMachineState === TimerMachineState.running || 
+        currentTimerMachineState === TimerMachineState.paused) {
+      const { remainingTime, duration } = snapshot.context;
+      const progressValue = duration > 0 ? ((duration - remainingTime) / duration) * 100 : 0;
+      updateProgress(progressValue);
+      
+      const formattedTime = formatTime(remainingTime);
+      document.title = formattedTime;
+    }
+  }, [snapshot.context, currentTimerMachineState]);
 
-    handleResize();
-
-    return () => window.removeEventListener("resize", handleResize);
+  useEffect(() => {
+    send({ type: 'SET_WORK_DURATION', duration: workPreset * 60 });
+    send({ type: 'SET_BREAK_DURATION', duration: breakPreset * 60 });
   }, []);
 
   useEffect(() => {
-    currentPresetRef.current = currentPreset;
-    nextSessionTransitionRef.current = nextSessionTransition;
-    currentTimerMachineRef.current = Object.values(snapshot.value)[0];
-    currentSessionMachineRef.current = Object.keys(snapshot.value)[0];
-  }, [snapshot]);
+    const sessionTransitionOccurred = 
+      (currentSessionMachineState === SessionMachineState.work && 
+       currentTimerMachineState === TimerMachineState.idle &&
+       snapshot.context.remainingTime === 0) ||
+      (currentSessionMachineState === SessionMachineState.break && 
+       currentTimerMachineState === TimerMachineState.idle &&
+       snapshot.context.remainingTime === 0);
 
-  useEffect(() => {
-    if (!user) {
-      return;
+    if (sessionTransitionOccurred && user?.id) {
+      toast.success("Session completed!");
     }
+  }, [currentSessionMachineState, currentTimerMachineState, snapshot.context, user?.id]);
 
-    socket.connect();
+  const startTimer = () => {
+    send({ type: TimerMachineTransition.start });
+  };
 
-    socket.on("connect_error", (err) => {
-      console.log(`connect_error due to ${err}`);
-    });
+  const stopTimer = () => {
+    send({ type: TimerMachineTransition.stop });
+  };
 
-    socket.on("connect", () => {
-      if (isSocketConnected.current) {
-        return;
-      }
+  const pauseTimer = () => {
+    send({ type: TimerMachineTransition.pause });
+  };
 
-      isSocketConnected.current = true;
+  const resumeTimer = () => {
+    send({ type: TimerMachineTransition.resume });
+  };
 
-      socket.emit("joinRoom", room, user.name, user.picture, user.sub);
-
-      socket.on("showToast", (message, type) => {
-        switch (type) {
-          case "error":
-            toast.error(message);
-            break;
-          case "success":
-            toast.success(message);
-            break;
-          default:
-            toast(message);
-        }
-      });
-
-      socket.on("showSyncRequest", (source) => {
-        toast.message(`${source.displayName} wants to sync timers.`, {
-          description: `User will be able to control your timer.`,
-          duration: 5000,
-          action: {
-            label: "Accept",
-            onClick: () => {
-              socket.emit("acceptSyncRequest", room, source.socketId);
-            },
-          },
-          onAutoClose: () => {
-            socket.emit("declineSyncRequest", room, source.socketId);
-          },
-        });
-      });
-
-      socket.on("syncMachines", () => {
-        socket.emit("syncMachines", actor.getSnapshot());
-      });
-
-      socket.on(`setMachineSnapshot:${user.sub}`, (snapshot) => {
-        const transitions = transitionsToTargetState(snapshot.value);
-        transitions.forEach((transition) => {
-          send({ type: transition });
-        });
-      });
-
-      socket.on(`sessionCompletion:${user.sub}`, () => {
-        var chime = new Audio("../sounds/done.mp3");
-        chime.play();
-        axios.get(serverBaseUrl + `/${user.sub}/total_sessions`).then((res) => {
-          const totalSessions = res.data as number;
-          achievements.forEach((achievement) => {
-            if (totalSessions == achievement.value) {
-              toast(
-                <div className="flex items-center gap-4">
-                  <img
-                    src={`../../../../achievements/milestones/thumbnails/${achievement.value}.png`}
-                    className="h-10 w-10"
-                  />
-                  <div className="flex flex-1 flex-col">
-                    <h1 className="font-bold">Achievement Unlocked!</h1>
-                    <h2>you have unlocked a new achievement.</h2>
-                  </div>
-                </div>,
-              );
-            }
-          });
-        });
-      });
-
-      socket.on(`machineTransition:${user?.sub}`, (transition) => {
-        send({ type: transition });
-        if (transition === TimerMachineTransition.stop) {
-          updateProgress(0);
-          socket.emit("updateTimer", currentPresetRef.current * 60, user?.sub);
-        }
-      });
-
-      socket.on("removeParticipant", (participant) => {
-        setOtherParticipants((participants) =>
-          participants.filter((p) => p.uid !== participant),
-        );
-      });
-
-      socket.on("addExistingParticipants", (existingParticipants) => {
-        setOtherParticipants(
-          existingParticipants
-            .map(JSON.parse)
-            .filter((p) => p.uid != user?.sub),
-        );
-      });
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [user]);
+  const handleParticipantCountChange = (count: number) => {
+    setHasOtherParticipants(count > 0);
+  };
 
   return (
     <>
       <div className="h-full w-full">
         <ResizablePanelGroup
-          direction={directionParticipantPanelDirection}
+          direction="horizontal"
           className="w-full rounded-lg border"
         >
-          <ResizablePanel defaultSize={80} className="flex flex-col">
+          <ResizablePanel defaultSize={hasOtherParticipants ? 85 : 100} className="flex flex-col">
             <div className="flex flex-row justify-between">
               <Sheet>
                 <SheetTrigger>
                   <Avatar className="m-5">
-                    <AvatarImage src={user?.picture} />
+                    <AvatarImage src={user?.user_metadata?.picture} />
                     <AvatarFallback />
                   </Avatar>
                 </SheetTrigger>
@@ -259,17 +246,23 @@ export default ({ params }: { params: { id: string } }) => {
                   </SheetHeader>
                 </SheetContent>
               </Sheet>
-              <Button
-                className="m-5"
-                variant="outline"
-                size="icon"
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  toast.success("Link copied to clipboard!");
-                }}
-              >
-                <Share2Icon className="h-4 w-4" />
-              </Button>
+              <div className="m-5 flex items-center gap-2">
+                {isConnected ? (
+                  <span className="text-sm text-green-600">● Connected</span>
+                ) : (
+                  <span className="text-sm text-red-600">● Disconnected</span>
+                )}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    toast.success("Link copied to clipboard!");
+                  }}
+                >
+                  <Share2Icon className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <div className="flex-1" />
             <div className="flex flex-col items-center justify-center gap-5">
@@ -294,41 +287,15 @@ export default ({ params }: { params: { id: string } }) => {
                 />
                 <ClockFace
                   size="text-8xl"
-                  participantId={user?.sub}
+                  participantId={user?.id}
                   preset={currentPreset}
                   animated={true}
-                  updateProgress={(time) => {
-                    if (
-                      !(
-                        currentTimerMachineRef.current ===
-                        TimerMachineState.running
-                      )
-                    ) {
-                      return;
-                    }
-                    const preset = currentPresetRef.current * 60;
-                    updateProgress(((preset - time) / preset) * 100);
-                  }}
-                  updateTitle={(formattedTime) => {
-                    document.title = formattedTime;
-                  }}
+                  remainingTime={snapshot.context.remainingTime}
                 />
                 {currentTimerMachineState === TimerMachineState.idle && (
                   <Button
                     className="w-full"
-                    onClick={() =>
-                      socket.emit(
-                        "startTimer",
-                        user?.sub,
-                        currentPreset * 60,
-                        TimerMachineTransition.start,
-                        [
-                          nextSessionTransitionRef.current,
-                          TimerMachineTransition.stop,
-                        ],
-                      )
-                    }
-                    disabled={!isSocketConnected.current}
+                    onClick={startTimer}
                   >
                     Start
                   </Button>
@@ -339,8 +306,7 @@ export default ({ params }: { params: { id: string } }) => {
                   <div className="flex w-full justify-center gap-5">
                     {currentTimerMachineState == TimerMachineState.running && (
                       <Button
-                        onClick={() => socket.emit("pauseTimer", user.sub)}
-                        disabled={!isSocketConnected.current}
+                        onClick={pauseTimer}
                         className="flex-1"
                       >
                         Pause
@@ -349,32 +315,15 @@ export default ({ params }: { params: { id: string } }) => {
 
                     {currentTimerMachineState === TimerMachineState.paused && (
                       <Button
-                        onClick={() =>
-                          socket.emit(
-                            "resumeTimer",
-                            user.sub,
-                            TimerMachineTransition.resume,
-                            [
-                              nextSessionTransitionRef.current,
-                              TimerMachineTransition.stop,
-                            ],
-                          )
-                        }
-                        disabled={!isSocketConnected.current}
+                        onClick={resumeTimer}
                         className="flex-1"
                       >
-                        resume
+                        Resume
                       </Button>
                     )}
 
                     <Button
-                      onClick={() => {
-                        socket.emit("stopTimer", user.sub, [
-                          nextSessionTransitionRef.current,
-                          TimerMachineTransition.stop,
-                        ]);
-                      }}
-                      disabled={!isSocketConnected.current}
+                      onClick={stopTimer}
                       className="flex-1"
                     >
                       Stop
@@ -409,35 +358,24 @@ export default ({ params }: { params: { id: string } }) => {
             </div>
             <div className="flex-1" />
           </ResizablePanel>
-          {otherParticipants.length > 0 && <ResizableHandle withHandle />}
-          {otherParticipants.length > 0 && (
-            <ResizablePanel defaultSize={15} minSize={15} maxSize={20}>
-              <ScrollArea className="h-full w-full p-2">
-                <div className="flex overflow-x-auto md:flex-col">
-                  {otherParticipants.map(
-                    ({ uid, socketId, avatar, displayName }, index) => {
-                      return (
-                        <>
-                          <ParticipantCard
-                            participant={uid}
-                            participantSocket={socketId}
-                            avatar={avatar}
-                            room={room}
-                            key={index}
-                            displayName={displayName}
-                          />
-                        </>
-                      );
-                    },
-                  )}
-                </div>
-              </ScrollArea>
+          
+          {/* Always render the resizable panel structure, but control visibility */}
+          <>
+            <ResizableHandle className={hasOtherParticipants ? "" : "hidden"} />
+            <ResizablePanel 
+              defaultSize={hasOtherParticipants ? 15 : 0} 
+              minSize={hasOtherParticipants ? 15 : 0} 
+              maxSize={hasOtherParticipants ? 25 : 0}
+              className={hasOtherParticipants ? "" : "hidden"}
+            >
+              <ParticipantsPanel 
+                currentUserId={user?.id} 
+                onParticipantCountChange={handleParticipantCountChange}
+              />
             </ResizablePanel>
-          )}
+          </>
         </ResizablePanelGroup>
       </div>
     </>
   );
 };
-
-type Direction = "vertical" | "horizontal";
