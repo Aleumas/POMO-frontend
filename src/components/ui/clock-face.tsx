@@ -1,14 +1,11 @@
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 export default ({
   size,
   preset = 0,
   animated,
-  participantId,
   remainingTime,
-  updateProgress,
-  updateTitle,
 }: {
   size: string;
   preset: number;
@@ -21,7 +18,7 @@ export default ({
   const [timerDigits, setTimerDigits] = useState(
     secondsToTime(preset * 60).split(""),
   );
-  
+
   useEffect(() => {
     if (remainingTime !== undefined) {
       const formattedTime = secondsToTime(remainingTime);
@@ -67,7 +64,7 @@ const secondsToTime = (total_seconds: number) => {
   const minutes = Math.floor(total_seconds / 60);
   const seconds = total_seconds % 60;
 
-  const formatted_time =
-    String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0");
-  return formatted_time;
+  return (
+    String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0")
+  );
 };

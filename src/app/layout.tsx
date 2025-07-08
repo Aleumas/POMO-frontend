@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import { useEnsureAnonUser } from '@/hooks/useEnsureAnonUser';
-import { AuthProvider } from '@/app/providers/AuthContext';
+import { useEnsureAnonUser } from "@/hooks/useEnsureAnonUser";
+import { AuthProvider } from "@/app/providers/AuthContext";
 
 export default function App({ children }: { children: React.ReactNode }) {
   useEnsureAnonUser();

@@ -20,7 +20,7 @@ const hiddenMilestoneMedel =
   "https://prod.spline.design/G9KwJ8ipTOZ3kUOc/scene.splinecode";
 
 export default () => {
-//  const { user } = useUser();
+  //  const { user } = useUser();
   const [totalSessionCount, setTotalSessionCount] = useState(0);
   const [isLoading, setLoadingState] = useState(true);
 

@@ -7,7 +7,13 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { Share2Icon } from "@radix-ui/react-icons";
-import { uniqueNamesGenerator, Config, adjectives, colors, animals } from 'unique-names-generator';
+import {
+  uniqueNamesGenerator,
+  Config,
+  adjectives,
+  colors,
+  animals,
+} from "unique-names-generator";
 
 import ClockFace from "@/components/ui/clock-face";
 import { Button } from "@/components/ui/button";
@@ -41,8 +47,8 @@ import {
   formatTime,
 } from "@/lib/session-machine-utils";
 
-import { useAuth } from '@/app/providers/AuthContext';
-import { socket } from '@/socket';
+import { useAuth } from "@/app/providers/AuthContext";
+import { socket } from "@/socket";
 
 const baseUrl =
   process.env.NEXT_PUBLIC_MODE == "development"
@@ -50,13 +56,12 @@ const baseUrl =
     : process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL;
 
 const randomName: string = uniqueNamesGenerator({
-  dictionaries: [adjectives, colors, animals]
+  dictionaries: [adjectives, colors, animals],
 });
 
 const randomAvatarUrl = (name: string) => {
-  return `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(name)}&size=64`
-}
-
+  return `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(name)}&size=64`;
+};
 
 export default ({ params }: { params: { id: string } }) => {
   const { user, loading } = useAuth();
@@ -87,64 +92,68 @@ export default ({ params }: { params: { id: string } }) => {
     }
 
     function onError(error) {
-      console.error('Socket error:', error);
+      console.error("Socket error:", error);
     }
 
     function onAddExistingParticipants(existingParticipants) {
       const parsedParticipants = existingParticipants
-        .map(p => JSON.parse(p))
-        .filter(p => p.uid !== user?.id);
-      
+        .map((p) => JSON.parse(p))
+        .filter((p) => p.uid !== user?.id);
+
       const uniqueParticipants = Array.from(
         parsedParticipants.reduce((map, participant) => {
           map.set(participant.uid, participant);
           return map;
-        }, new Map())
+        }, new Map()),
       ).map(([_, participant]) => participant);
-      
+
       setHasOtherParticipants(uniqueParticipants.length > 0);
     }
 
-
-
-    socket.on('connect', onConnect);
-    socket.on('disconnect', onDisconnect);
-    socket.on('joinedRoom', onJoinedRoom);
-    socket.on('error', onError);
-    socket.on('addExistingParticipants', onAddExistingParticipants);
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("joinedRoom", onJoinedRoom);
+    socket.on("error", onError);
+    socket.on("addExistingParticipants", onAddExistingParticipants);
 
     if (!socket.connected) {
       socket.connect();
     }
 
     return () => {
-      socket.off('connect', onConnect);
-      socket.off('disconnect', onDisconnect);
-      socket.off('joinedRoom', onJoinedRoom);
-      socket.off('error', onError);
-      socket.off('addExistingParticipants', onAddExistingParticipants);
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("joinedRoom", onJoinedRoom);
+      socket.off("error", onError);
+      socket.off("addExistingParticipants", onAddExistingParticipants);
     };
   }, []);
 
   useEffect(() => {
     if (isConnected && user?.id && room && !isRoomJoined) {
-      const url = randomAvatarUrl(randomName)
-      const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email || randomName;
-      const avatar = user.user_metadata?.picture || user.user_metadata?.avatar_url || url;
-      
-      socket.emit('joinRoom', room, displayName, avatar, user.id);
+      const displayName =
+        user.user_metadata?.full_name ||
+        user.user_metadata?.name ||
+        user.email ||
+        randomName;
+      const avatar =
+        user.user_metadata?.picture ||
+        user.user_metadata?.avatar_url ||
+        randomAvatarUrl(randomName);
+
+      socket.emit("joinRoom", room, displayName, avatar, user.id);
     }
   }, [isConnected, user?.id, room, isRoomJoined]);
 
   useEffect(() => {
     if (user?.id) {
-      send({ type: 'SET_USER_ID', userId: user.id });
+      send({ type: "SET_USER_ID", userId: user.id });
     }
   }, [user?.id, send]);
 
   useEffect(() => {
     if (room) {
-      send({ type: 'SET_ROOM_ID', roomId: room });
+      send({ type: "SET_ROOM_ID", roomId: room });
     }
   }, [room, send]);
 
@@ -158,46 +167,54 @@ export default ({ params }: { params: { id: string } }) => {
 
   useEffect(() => {
     if (currentSessionMachineState === SessionMachineState.work) {
-      send({ type: 'SET_WORK_DURATION', duration: workPreset * 60 });
+      send({ type: "SET_WORK_DURATION", duration: workPreset * 60 });
     }
   }, [workPreset, currentSessionMachineState, send]);
 
   useEffect(() => {
     if (currentSessionMachineState === SessionMachineState.break) {
-      send({ type: 'SET_BREAK_DURATION', duration: breakPreset * 60 });
+      send({ type: "SET_BREAK_DURATION", duration: breakPreset * 60 });
     }
   }, [breakPreset, currentSessionMachineState, send]);
 
   useEffect(() => {
-    if (currentTimerMachineState === TimerMachineState.running || 
-        currentTimerMachineState === TimerMachineState.paused) {
+    if (
+      currentTimerMachineState === TimerMachineState.running ||
+      currentTimerMachineState === TimerMachineState.paused
+    ) {
       const { remainingTime, duration } = snapshot.context;
-      const progressValue = duration > 0 ? ((duration - remainingTime) / duration) * 100 : 0;
+      const progressValue =
+        duration > 0 ? ((duration - remainingTime) / duration) * 100 : 0;
       updateProgress(progressValue);
-      
+
       const formattedTime = formatTime(remainingTime);
       document.title = formattedTime;
     }
   }, [snapshot.context, currentTimerMachineState]);
 
   useEffect(() => {
-    send({ type: 'SET_WORK_DURATION', duration: workPreset * 60 });
-    send({ type: 'SET_BREAK_DURATION', duration: breakPreset * 60 });
+    send({ type: "SET_WORK_DURATION", duration: workPreset * 60 });
+    send({ type: "SET_BREAK_DURATION", duration: breakPreset * 60 });
   }, []);
 
   useEffect(() => {
-    const sessionTransitionOccurred = 
-      (currentSessionMachineState === SessionMachineState.work && 
-       currentTimerMachineState === TimerMachineState.idle &&
-       snapshot.context.remainingTime === 0) ||
-      (currentSessionMachineState === SessionMachineState.break && 
-       currentTimerMachineState === TimerMachineState.idle &&
-       snapshot.context.remainingTime === 0);
+    const sessionTransitionOccurred =
+      (currentSessionMachineState === SessionMachineState.work &&
+        currentTimerMachineState === TimerMachineState.idle &&
+        snapshot.context.remainingTime === 0) ||
+      (currentSessionMachineState === SessionMachineState.break &&
+        currentTimerMachineState === TimerMachineState.idle &&
+        snapshot.context.remainingTime === 0);
 
     if (sessionTransitionOccurred && user?.id) {
       toast.success("Session completed!");
     }
-  }, [currentSessionMachineState, currentTimerMachineState, snapshot.context, user?.id]);
+  }, [
+    currentSessionMachineState,
+    currentTimerMachineState,
+    snapshot.context,
+    user?.id,
+  ]);
 
   const startTimer = () => {
     send({ type: TimerMachineTransition.start });
@@ -226,7 +243,10 @@ export default ({ params }: { params: { id: string } }) => {
           direction="horizontal"
           className="w-full rounded-lg border"
         >
-          <ResizablePanel defaultSize={hasOtherParticipants ? 85 : 100} className="flex flex-col">
+          <ResizablePanel
+            defaultSize={hasOtherParticipants ? 85 : 100}
+            className="flex flex-col"
+          >
             <div className="flex flex-row justify-between">
               <Sheet>
                 <SheetTrigger>
@@ -304,10 +324,7 @@ export default ({ params }: { params: { id: string } }) => {
                   remainingTime={snapshot.context.remainingTime}
                 />
                 {currentTimerMachineState === TimerMachineState.idle && (
-                  <Button
-                    className="w-full"
-                    onClick={startTimer}
-                  >
+                  <Button className="w-full" onClick={startTimer}>
                     Start
                   </Button>
                 )}
@@ -316,27 +333,18 @@ export default ({ params }: { params: { id: string } }) => {
                   currentTimerMachineState === TimerMachineState.paused) && (
                   <div className="flex w-full justify-center gap-5">
                     {currentTimerMachineState == TimerMachineState.running && (
-                      <Button
-                        onClick={pauseTimer}
-                        className="flex-1"
-                      >
+                      <Button onClick={pauseTimer} className="flex-1">
                         Pause
                       </Button>
                     )}
 
                     {currentTimerMachineState === TimerMachineState.paused && (
-                      <Button
-                        onClick={resumeTimer}
-                        className="flex-1"
-                      >
+                      <Button onClick={resumeTimer} className="flex-1">
                         Resume
                       </Button>
                     )}
 
-                    <Button
-                      onClick={stopTimer}
-                      className="flex-1"
-                    >
+                    <Button onClick={stopTimer} className="flex-1">
                       Stop
                     </Button>
                   </div>
@@ -369,18 +377,21 @@ export default ({ params }: { params: { id: string } }) => {
             </div>
             <div className="flex-1" />
           </ResizablePanel>
-          
+
           {/* Always render the resizable panel structure, but control visibility */}
           <>
-            <ResizableHandle className={hasOtherParticipants ? "" : "hidden"} />
-            <ResizablePanel 
-              defaultSize={hasOtherParticipants ? 15 : 0} 
-              minSize={hasOtherParticipants ? 15 : 0} 
+            <ResizableHandle
+              className={hasOtherParticipants ? "" : "hidden"}
+              withHandle
+            />
+            <ResizablePanel
+              defaultSize={hasOtherParticipants ? 15 : 0}
+              minSize={hasOtherParticipants ? 15 : 0}
               maxSize={hasOtherParticipants ? 25 : 0}
               className={hasOtherParticipants ? "" : "hidden"}
             >
-              <ParticipantsPanel 
-                currentUserId={user?.id} 
+              <ParticipantsPanel
+                currentUserId={user?.id}
                 onParticipantCountChange={handleParticipantCountChange}
               />
             </ResizablePanel>

@@ -26,8 +26,6 @@ export enum SessionMachineTransition {
   break = "BREAK",
 }
 
-
-
 export type TimerContext = {
   remainingTime: number;
   duration: number;
@@ -35,4 +33,6 @@ export type TimerContext = {
   breakDuration: number;
   userId?: string;
   roomId?: string;
-}; 
+  currentSessionState: SessionMachineState;
+  currentTimerState: TimerMachineState;
+};

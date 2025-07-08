@@ -28,9 +28,14 @@ interface ParticipantsPanelProps {
   onParticipantCountChange?: (count: number) => void;
 }
 
-export default function ParticipantsPanel({ currentUserId, onParticipantCountChange }: ParticipantsPanelProps) {
+export default function ParticipantsPanel({
+  currentUserId,
+  onParticipantCountChange,
+}: ParticipantsPanelProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [participantTimerStates, setParticipantTimerStates] = useState<Map<string, ParticipantTimerState>>(new Map());
+  const [participantTimerStates, setParticipantTimerStates] = useState<
+    Map<string, ParticipantTimerState>
+  >(new Map());
   const currentUserIdRef = useRef(currentUserId);
 
   useEffect(() => {
@@ -40,9 +45,9 @@ export default function ParticipantsPanel({ currentUserId, onParticipantCountCha
   useEffect(() => {
     function onAddExistingParticipants(existingParticipants: string[]) {
       const parsedParticipants = existingParticipants
-        .map(p => JSON.parse(p))
+        .map((p) => JSON.parse(p))
         .filter((p: Participant) => p.uid !== currentUserIdRef.current);
-      
+
       const deduplicatedParticipants = Array.from(
         parsedParticipants.reduce((map, participant) => {
           const existing = map.get(participant.uid);
@@ -50,41 +55,45 @@ export default function ParticipantsPanel({ currentUserId, onParticipantCountCha
             map.set(participant.uid, participant);
           }
           return map;
-        }, new Map<string, Participant>())
+        }, new Map<string, Participant>()),
       ).map(([_, participant]) => participant);
-      
+
       setParticipants(deduplicatedParticipants);
     }
 
     function onRemoveParticipant(participantId: string) {
-      setParticipants(prev => prev.filter(p => p.uid !== participantId));
-      setParticipantTimerStates(prev => {
+      setParticipants((prev) => prev.filter((p) => p.uid !== participantId));
+      setParticipantTimerStates((prev) => {
         const newStates = new Map(prev);
         newStates.delete(participantId);
         return newStates;
       });
     }
 
-    function onTimerStateUpdate(data: { userId: string; event: string; state: TimerState; timestamp: number }) {
+    function onTimerStateUpdate(data: {
+      userId: string;
+      state: TimerState;
+      timestamp: number;
+    }) {
       if (data.userId === currentUserIdRef.current) {
         return;
       }
-      
-      setParticipants(prev => {
-        const existingParticipant = prev.find(p => p.uid === data.userId);
+
+      setParticipants((prev) => {
+        const existingParticipant = prev.find((p) => p.uid === data.userId);
         if (!existingParticipant) {
           const newParticipant: Participant = {
             uid: data.userId,
-            displayName: 'User',
+            displayName: "User",
             socketId: `auto-${data.userId}`,
-            avatar: '',
+            avatar: "",
           };
           return [...prev, newParticipant];
         }
         return prev;
       });
-      
-      setParticipantTimerStates(prev => {
+
+      setParticipantTimerStates((prev) => {
         const newStates = new Map(prev);
         newStates.set(data.userId, {
           userId: data.userId,
@@ -99,16 +108,16 @@ export default function ParticipantsPanel({ currentUserId, onParticipantCountCha
       // Handle toast messages if needed
     }
 
-    socket.on('addExistingParticipants', onAddExistingParticipants);
-    socket.on('removeParticipant', onRemoveParticipant);
-    socket.on('timerStateUpdate', onTimerStateUpdate);
-    socket.on('showToast', onShowToast);
+    socket.on("addExistingParticipants", onAddExistingParticipants);
+    socket.on("removeParticipant", onRemoveParticipant);
+    socket.on("timerStateUpdate", onTimerStateUpdate);
+    socket.on("showToast", onShowToast);
 
     return () => {
-      socket.off('addExistingParticipants', onAddExistingParticipants);
-      socket.off('removeParticipant', onRemoveParticipant);
-      socket.off('timerStateUpdate', onTimerStateUpdate);
-      socket.off('showToast', onShowToast);
+      socket.off("addExistingParticipants", onAddExistingParticipants);
+      socket.off("removeParticipant", onRemoveParticipant);
+      socket.off("timerStateUpdate", onTimerStateUpdate);
+      socket.off("showToast", onShowToast);
     };
   }, []);
 
@@ -127,24 +136,28 @@ export default function ParticipantsPanel({ currentUserId, onParticipantCountCha
         </h3>
         {participants.map((participant) => {
           const timerState = participantTimerStates.get(participant.uid);
-          const machineState = timerState ? {
-            value: timerState.timerState.timerState === 'idle' 
-              ? timerState.timerState.timerState 
-              : { [timerState.timerState.sessionState]: timerState.timerState.timerState },
-            context: {
-              remainingTime: timerState.timerState.remainingTime,
-              duration: timerState.timerState.duration,
-            }
-          } : undefined;
+          const machineState = timerState
+            ? {
+                value:
+                  timerState.timerState.timerState === "idle"
+                    ? timerState.timerState.timerState
+                    : {
+                        [timerState.timerState.sessionState]:
+                          timerState.timerState.timerState,
+                      },
+                context: {
+                  remainingTime: timerState.timerState.remainingTime,
+                  duration: timerState.timerState.duration,
+                },
+              }
+            : undefined;
 
           return (
             <ParticipantCard
-              key={participant.uid}
               participant={participant.uid}
               participantSocket={participant.socketId}
               avatar={participant.avatar}
               displayName={participant.displayName}
-              room=""
               preset={25}
               machineState={machineState}
             />
@@ -153,4 +166,4 @@ export default function ParticipantsPanel({ currentUserId, onParticipantCountCha
       </div>
     </ScrollArea>
   );
-} 
+}

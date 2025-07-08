@@ -1,5 +1,8 @@
-import { getCurrentSessionState, getCurrentTimerState } from './session-machine-utils';
-import { socket } from '../socket';
+import {
+  getCurrentSessionState,
+  getCurrentTimerState,
+} from "./session-machine-utils";
+import { socket } from "../socket";
 
 const CHIME_SOUND_PATH = "/sounds/done.mp3" as const;
 
@@ -7,36 +10,26 @@ const CHIME_SOUND_PATH = "/sounds/done.mp3" as const;
 export const playChime = () => {
   try {
     const chime = new Audio(CHIME_SOUND_PATH);
-    chime.play().catch(e => console.log("Could not play sound:", e));
+    chime.play().catch((e) => console.log("Could not play sound:", e));
   } catch (error) {
     console.log("Sound file not found:", error);
   }
 };
 
-export const broadcastTimerState = (snapshot: any, event: string, userId?: string, roomId?: string) => {
-  if (!userId || !roomId || !socket.connected) {
+export const broadcastTimerState = (context) => {
+  if (!context || !socket.connected) {
     return;
   }
 
   try {
-    const sessionState = getCurrentSessionState(snapshot);
-    const timerState = getCurrentTimerState(snapshot);
-    const { remainingTime, duration } = snapshot.context;
+    const { remainingTime, duration } = context;
 
     const payload = {
-      userId,
-      roomId,
-      event,
-      state: {
-        sessionState,
-        timerState,
-        remainingTime,
-        duration,
-      },
+      context,
       timestamp: Date.now(),
     };
 
-    socket.emit('timer:broadcast', payload);
+    socket.emit("timer:broadcast", payload);
   } catch (error) {
     console.error("Error broadcasting timer state:", error);
   }
@@ -44,18 +37,13 @@ export const broadcastTimerState = (snapshot: any, event: string, userId?: strin
 
 // XState action creators
 export const createSessionMachineActions = () => ({
-  onTimerComplete: ({ context }) => {
+  onTimerComplete: ({ context, event }) => {
     playChime();
   },
-  onSessionComplete: ({ context }) => {
+  onSessionComplete: ({ context, event }) => {
     playChime();
   },
-  broadcastTick: ({ context, self }) => {
-    const snapshot = self.getSnapshot();
-    broadcastTimerState(snapshot, "TICK", context.userId, context.roomId);
+  broadcastTimerState: ({ context, event }) => {
+    broadcastTimerState(context);
   },
-  broadcastComplete: ({ context, self }) => {
-    const snapshot = self.getSnapshot();
-    broadcastTimerState(snapshot, "COMPLETE", context.userId, context.roomId);
-  },
-}); 
+});

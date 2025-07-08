@@ -1,11 +1,11 @@
 import { createMachine, assign, fromCallback } from "xstate";
-import { 
-  TimerMachineState, 
-  TimerMachineTransition, 
+import {
+  TimerMachineState,
+  TimerMachineTransition,
   TimerMachineInternalTransition,
-  SessionMachineState, 
+  SessionMachineState,
   SessionMachineTransition,
-  TimerContext
+  TimerContext,
 } from "./session-machine-types";
 import { createSessionMachineActions } from "./session-machine-actions";
 
@@ -20,14 +20,16 @@ const SessionMachine = createMachine(
       breakDuration: 5 * 60,
       userId: undefined,
       roomId: undefined,
+      currentSessionState: SessionMachineState.work,
+      currentTimerState: TimerMachineState.idle,
     } as TimerContext,
     on: {
-      'SET_USER_ID': {
+      SET_USER_ID: {
         actions: assign({
           userId: ({ event }: { event: any }) => event.userId,
         }),
       },
-      'SET_ROOM_ID': {
+      SET_ROOM_ID: {
         actions: assign({
           roomId: ({ event }: { event: any }) => event.roomId,
         }),
@@ -36,24 +38,38 @@ const SessionMachine = createMachine(
     states: {
       [SessionMachineState.work]: {
         initial: TimerMachineState.idle,
-        entry: assign({
-          duration: ({ context }) => context.workDuration,
-          remainingTime: ({ context }) => context.workDuration,
-        }),
+        entry: [
+          assign({
+            duration: ({ context }) => context.workDuration,
+            remainingTime: ({ context }) => context.workDuration,
+            currentSessionState: SessionMachineState.work,
+            currentTimerState: TimerMachineState.idle,
+          }),
+          "broadcastTimerState",
+        ],
         on: {
           [SessionMachineTransition.break]: {
             target: SessionMachineState.break,
           },
           SET_WORK_DURATION: {
-            actions: assign({
-              workDuration: ({ event }: { event: any }) => event.duration,
-              duration: ({ event }: { event: any }) => event.duration,
-              remainingTime: ({ event }: { event: any }) => event.duration,
-            }),
+            actions: [
+              assign({
+                workDuration: ({ event }: { event: any }) => event.duration,
+                duration: ({ event }: { event: any }) => event.duration,
+                remainingTime: ({ event }: { event: any }) => event.duration,
+              }),
+              "broadcastTimerState",
+            ],
           },
         },
         states: {
           [TimerMachineState.idle]: {
+            entry: [
+              assign({
+                currentTimerState: TimerMachineState.idle,
+              }),
+              "broadcastTimerState",
+            ],
             on: {
               [TimerMachineTransition.start]: {
                 target: TimerMachineState.running,
@@ -61,11 +77,17 @@ const SessionMachine = createMachine(
             },
           },
           [TimerMachineState.running]: {
+            entry: [
+              assign({
+                currentTimerState: TimerMachineState.running,
+              }),
+              "broadcastTimerState",
+            ],
             invoke: {
               src: "timerInterval",
               onDone: {
                 target: TimerMachineState.idle,
-                actions: "onTimerComplete",
+                actions: ["onTimerComplete", "broadcastTimerState"],
               },
             },
             on: {
@@ -76,15 +98,19 @@ const SessionMachine = createMachine(
                     assign({
                       remainingTime: ({ context }) => context.remainingTime - 1,
                     }),
-                    "broadcastTick"
+                    "broadcastTimerState",
                   ],
                 },
                 {
                   guard: ({ context }) => context.remainingTime <= 1,
                   target: `#session.${SessionMachineState.break}`,
-                  actions: ["onSessionComplete", "broadcastComplete", assign({
-                    remainingTime: ({ context }) => 0,
-                  })],
+                  actions: [
+                    "onSessionComplete",
+                    "broadcastTimerState",
+                    assign({
+                      remainingTime: ({ context }) => 0,
+                    }),
+                  ],
                 },
               ],
               [TimerMachineTransition.pause]: {
@@ -92,26 +118,38 @@ const SessionMachine = createMachine(
               },
               [TimerMachineTransition.stop]: {
                 target: TimerMachineState.idle,
-                actions: assign({
-                  remainingTime: ({ context }) => context.duration,
-                }),
+                actions: [
+                  assign({
+                    remainingTime: ({ context }) => context.duration,
+                  }),
+                  "broadcastTimerState",
+                ],
               },
               [TimerMachineInternalTransition.complete]: {
                 target: `#session.${SessionMachineState.break}`,
-                actions: ["onSessionComplete", "broadcastComplete"],
+                actions: ["onSessionComplete", "broadcastTimerState"],
               },
             },
           },
           [TimerMachineState.paused]: {
+            entry: [
+              assign({
+                currentTimerState: TimerMachineState.paused,
+              }),
+              "broadcastTimerState",
+            ],
             on: {
               [TimerMachineTransition.resume]: {
                 target: TimerMachineState.running,
               },
               [TimerMachineTransition.stop]: {
                 target: TimerMachineState.idle,
-                actions: assign({
-                  remainingTime: ({ context }) => context.duration,
-                }),
+                actions: [
+                  assign({
+                    remainingTime: ({ context }) => context.duration,
+                  }),
+                  "broadcastTimerState",
+                ],
               },
             },
           },
@@ -119,24 +157,38 @@ const SessionMachine = createMachine(
       },
       [SessionMachineState.break]: {
         initial: TimerMachineState.idle,
-        entry: assign({
-          duration: ({ context }) => context.breakDuration,
-          remainingTime: ({ context }) => context.breakDuration,
-        }),
+        entry: [
+          assign({
+            duration: ({ context }) => context.breakDuration,
+            remainingTime: ({ context }) => context.breakDuration,
+            currentSessionState: SessionMachineState.break,
+            currentTimerState: TimerMachineState.idle,
+          }),
+          "broadcastTimerState",
+        ],
         on: {
           [SessionMachineTransition.work]: {
             target: SessionMachineState.work,
           },
           SET_BREAK_DURATION: {
-            actions: assign({
-              breakDuration: ({ event }: { event: any }) => event.duration,
-              duration: ({ event }: { event: any }) => event.duration,
-              remainingTime: ({ event }: { event: any }) => event.duration,
-            }),
+            actions: [
+              assign({
+                breakDuration: ({ event }: { event: any }) => event.duration,
+                duration: ({ event }: { event: any }) => event.duration,
+                remainingTime: ({ event }: { event: any }) => event.duration,
+              }),
+              "broadcastTimerState",
+            ],
           },
         },
         states: {
           [TimerMachineState.idle]: {
+            entry: [
+              assign({
+                currentTimerState: TimerMachineState.idle,
+              }),
+              "broadcastTimerState",
+            ],
             on: {
               [TimerMachineTransition.start]: {
                 target: TimerMachineState.running,
@@ -144,11 +196,17 @@ const SessionMachine = createMachine(
             },
           },
           [TimerMachineState.running]: {
+            entry: [
+              assign({
+                currentTimerState: TimerMachineState.running,
+              }),
+              "broadcastTimerState",
+            ],
             invoke: {
               src: "timerInterval",
               onDone: {
                 target: TimerMachineState.idle,
-                actions: "onTimerComplete",
+                actions: ["onTimerComplete", "broadcastTimerState"],
               },
             },
             on: {
@@ -159,15 +217,19 @@ const SessionMachine = createMachine(
                     assign({
                       remainingTime: ({ context }) => context.remainingTime - 1,
                     }),
-                    "broadcastTick"
+                    "broadcastTimerState",
                   ],
                 },
                 {
                   guard: ({ context }) => context.remainingTime <= 1,
                   target: `#session.${SessionMachineState.work}`,
-                  actions: ["onSessionComplete", "broadcastComplete", assign({
-                    remainingTime: ({ context }) => 0,
-                  })],
+                  actions: [
+                    "onSessionComplete",
+                    "broadcastTimerState",
+                    assign({
+                      remainingTime: ({ context }) => 0,
+                    }),
+                  ],
                 },
               ],
               [TimerMachineTransition.pause]: {
@@ -175,26 +237,38 @@ const SessionMachine = createMachine(
               },
               [TimerMachineTransition.stop]: {
                 target: TimerMachineState.idle,
-                actions: assign({
-                  remainingTime: ({ context }) => context.duration,
-                }),
+                actions: [
+                  assign({
+                    remainingTime: ({ context }) => context.duration,
+                  }),
+                  "broadcastTimerState",
+                ],
               },
               [TimerMachineInternalTransition.complete]: {
                 target: `#session.${SessionMachineState.work}`,
-                actions: ["onSessionComplete", "broadcastComplete"],
+                actions: ["onSessionComplete", "broadcastTimerState"],
               },
             },
           },
           [TimerMachineState.paused]: {
+            entry: [
+              assign({
+                currentTimerState: TimerMachineState.paused,
+              }),
+              "broadcastTimerState",
+            ],
             on: {
               [TimerMachineTransition.resume]: {
                 target: TimerMachineState.running,
               },
               [TimerMachineTransition.stop]: {
                 target: TimerMachineState.idle,
-                actions: assign({
-                  remainingTime: ({ context }) => context.duration,
-                }),
+                actions: [
+                  assign({
+                    remainingTime: ({ context }) => context.duration,
+                  }),
+                  "broadcastTimerState",
+                ],
               },
             },
           },
@@ -213,7 +287,7 @@ const SessionMachine = createMachine(
       }),
     },
     actions: createSessionMachineActions(),
-  }
+  },
 );
 
 export default SessionMachine;
