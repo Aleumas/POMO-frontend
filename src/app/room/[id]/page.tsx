@@ -1,19 +1,12 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useMachine } from "@xstate/react";
 import { useRouter } from "next/navigation";
 
 import { toast } from "sonner";
 
 import { Share2Icon } from "@radix-ui/react-icons";
-import {
-  uniqueNamesGenerator,
-  Config,
-  adjectives,
-  colors,
-  animals,
-} from "unique-names-generator";
 
 import ClockFace from "@/components/ui/clock-face";
 import { Button } from "@/components/ui/button";
@@ -39,7 +32,6 @@ import {
   TimerMachineState,
   TimerMachineTransition,
   SessionMachineState,
-  SessionMachineTransition,
 } from "@/lib/session-machine-types";
 import {
   getCurrentTimerState,
@@ -47,24 +39,16 @@ import {
   formatTime,
 } from "@/lib/session-machine-utils";
 
-import { useAuth } from "@/app/providers/AuthContext";
 import { socket } from "@/socket";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 const baseUrl =
   process.env.NEXT_PUBLIC_MODE == "development"
     ? process.env.NEXT_PUBLIC_DEVELOPMENT_BASE_URL
     : process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL;
 
-const randomName: string = uniqueNamesGenerator({
-  dictionaries: [adjectives, colors, animals],
-});
-
-const randomAvatarUrl = (name: string) => {
-  return `https://api.dicebear.com/9.x/notionists-neutral/svg?seed=${encodeURIComponent(name)}&size=64`;
-};
-
 export default ({ params }: { params: { id: string } }) => {
-  const { user, loading } = useAuth();
+  const { user, displayName, avatarUrl } = useCurrentUser();
   const router = useRouter();
   const room = params.id;
 
@@ -131,17 +115,7 @@ export default ({ params }: { params: { id: string } }) => {
 
   useEffect(() => {
     if (isConnected && user?.id && room && !isRoomJoined) {
-      const displayName =
-        user.user_metadata?.full_name ||
-        user.user_metadata?.name ||
-        user.email ||
-        randomName;
-      const avatar =
-        user.user_metadata?.picture ||
-        user.user_metadata?.avatar_url ||
-        randomAvatarUrl(randomName);
-
-      socket.emit("joinRoom", room, displayName, avatar, user.id);
+      socket.emit("joinRoom", room, displayName, avatarUrl, user.id);
     }
   }, [isConnected, user?.id, room, isRoomJoined]);
 
@@ -251,7 +225,7 @@ export default ({ params }: { params: { id: string } }) => {
               <Sheet>
                 <SheetTrigger>
                   <Avatar className="m-5">
-                    <AvatarImage src={user?.user_metadata?.picture} />
+                    <AvatarImage src={avatarUrl} />
                     <AvatarFallback />
                   </Avatar>
                 </SheetTrigger>
