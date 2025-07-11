@@ -48,7 +48,7 @@ const baseUrl =
     : process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL;
 
 export default ({ params }: { params: { id: string } }) => {
-  const { user, displayName, avatarUrl } = useCurrentUser();
+  const { user, displayName, avatarUrl, isAnonymous } = useCurrentUser();
   const router = useRouter();
   const room = params.id;
 
@@ -231,23 +231,41 @@ export default ({ params }: { params: { id: string } }) => {
                 </SheetTrigger>
                 <SheetContent side="left">
                   <SheetHeader>
-                    <SheetTitle>Options</SheetTitle>
+                    <SheetTitle>Account</SheetTitle>
                     <Button
                       className="mt-3 w-full"
+                      onClick={() => {
+
+                      }}
+                    >
+                      Statistics
+                    </Button>
+                    <Button
+                      className="mt-3 w-full hidden"
                       onClick={() => {
                         router.push(`${baseUrl}/achievements`);
                       }}
                     >
                       Achievements
                     </Button>
-                    <Button
-                      className="mt-3 w-full"
-                      onClick={() => {
-                        router.push(`${baseUrl}/api/auth/logout`);
-                      }}
-                    >
-                      Logout
-                    </Button>
+                    { isAnonymous ?
+                      <Button
+                        className="mt-3 w-full"
+                        onClick={() => {
+                          router.push(`${baseUrl}/auth/login`);
+                        }}
+                      >
+                        Login
+                      </Button> :
+                      <Button
+                        className="mt-3 w-full"
+                        onClick={() => {
+                          router.push(`${baseUrl}/auth/logout`);
+                        }}
+                      >
+                        Logout
+                      </Button>
+                    }
                   </SheetHeader>
                 </SheetContent>
               </Sheet>
