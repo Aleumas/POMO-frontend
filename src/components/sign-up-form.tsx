@@ -24,6 +24,7 @@ export function SignUpForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>()
@@ -52,7 +53,9 @@ export function SignUpForm({
         },
       });
 
+      // @ts-ignore
       captcha?.current?.resetCaptcha()
+      
       if (error) throw error;
 
       // TODO: upgrade anon user account
@@ -76,11 +79,20 @@ export function SignUpForm({
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
               <div className="grid gap-2">
+                <div className="grid gap-2">
+                  <div className="flex items-center">
+                    <Label htmlFor="display-name">Display Name</Label>
+                  </div>
+                  <Input
+                    id="display-name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                  />
+                </div>
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="m@example.com"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

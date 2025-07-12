@@ -38,6 +38,9 @@ import {
   getCurrentSessionState,
   formatTime,
 } from "@/lib/session-machine-utils";
+import {
+  session
+} from "@/lib/supabase/session-utils";
 
 import { socket } from "@/socket";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -112,6 +115,16 @@ export default ({ params }: { params: { id: string } }) => {
       socket.off("addExistingParticipants", onAddExistingParticipants);
     };
   }, []);
+
+//  useEffect(() => {
+//    async function checkSessionExists() {
+//      if (user) {
+//        session(user.id, room);
+//      }
+//    }
+//
+//    checkSessionExists();
+//  }, [user])
 
   useEffect(() => {
     if (isConnected && user?.id && room && !isRoomJoined) {

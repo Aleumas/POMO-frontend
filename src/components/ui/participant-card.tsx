@@ -30,7 +30,7 @@ export default ({
     <>
       <ContextMenu>
         <ContextMenuTrigger
-          className={`${modeBorderColor[Object.values(machineState?.value ?? {})[0]]} bg-background hover:bg-accent hover:text-accent-foreground m-2 flex shrink-0 basis-1/4 flex-col items-center justify-center gap-2 rounded-lg border-2 p-2`}
+          className={`${modeBorderColor[Object.values(machineState?.value ?? {})[0] as string]} bg-background hover:bg-accent hover:text-accent-foreground m-2 flex shrink-0 basis-1/4 flex-col items-center justify-center gap-2 rounded-lg border-2 p-2`}
         >
           <Avatar>
             <AvatarImage src={avatar} alt={participant + "'s avatar"} />
