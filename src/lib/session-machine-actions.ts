@@ -27,8 +27,6 @@ export const broadcastTimerState = (context) => {
       timestamp: Date.now(),
     };
 
-    console.log(payload)
-
     socket.emit("timer:broadcast", payload);
   } catch (error) {
     console.error("Error broadcasting timer state:", error);
