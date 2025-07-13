@@ -22,12 +22,12 @@ export const broadcastTimerState = (context) => {
   }
 
   try {
-    const { remainingTime, duration } = context;
-
     const payload = {
       context,
       timestamp: Date.now(),
     };
+
+    console.log(payload)
 
     socket.emit("timer:broadcast", payload);
   } catch (error) {
