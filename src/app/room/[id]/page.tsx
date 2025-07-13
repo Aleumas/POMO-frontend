@@ -38,9 +38,7 @@ import {
   getCurrentSessionState,
   formatTime,
 } from "@/lib/session-machine-utils";
-import {
-  session
-} from "@/lib/supabase/session-utils";
+import { session } from "@/lib/supabase/session-utils";
 
 import { socket } from "@/socket";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -61,6 +59,10 @@ export default ({ params }: { params: { id: string } }) => {
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [isRoomJoined, setIsRoomJoined] = useState(false);
   const [hasOtherParticipants, setHasOtherParticipants] = useState(false);
+  const [
+    directionParticipantPanelDirection,
+    setDirectionParticipantPanelDirection,
+  ] = useState<"horizontal" | "vertical">("vertical");
 
   const [snapshot, send, actor] = useMachine(SessionMachine);
 
@@ -116,15 +118,15 @@ export default ({ params }: { params: { id: string } }) => {
     };
   }, []);
 
-//  useEffect(() => {
-//    async function checkSessionExists() {
-//      if (user) {
-//        session(user.id, room);
-//      }
-//    }
-//
-//    checkSessionExists();
-//  }, [user])
+  //  useEffect(() => {
+  //    async function checkSessionExists() {
+  //      if (user) {
+  //        session(user.id, room);
+  //      }
+  //    }
+  //
+  //    checkSessionExists();
+  //  }, [user])
 
   useEffect(() => {
     if (isConnected && user?.id && room && !isRoomJoined) {
@@ -143,6 +145,22 @@ export default ({ params }: { params: { id: string } }) => {
       send({ type: "SET_ROOM_ID", roomId: room });
     }
   }, [room, send]);
+
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth < 1050) {
+        setDirectionParticipantPanelDirection("vertical");
+      } else {
+        setDirectionParticipantPanelDirection("horizontal");
+      }
+    }
+
+    window.addEventListener("resize", handleResize);
+
+    handleResize();
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const currentTimerMachineState = getCurrentTimerState(snapshot);
   const currentSessionMachineState = getCurrentSessionState(snapshot);
@@ -227,7 +245,7 @@ export default ({ params }: { params: { id: string } }) => {
     <>
       <div className="h-full w-full">
         <ResizablePanelGroup
-          direction="horizontal"
+          direction={directionParticipantPanelDirection}
           className="w-full rounded-lg border"
         >
           <ResizablePanel
@@ -245,12 +263,7 @@ export default ({ params }: { params: { id: string } }) => {
                 <SheetContent side="left">
                   <SheetHeader>
                     <SheetTitle>Account</SheetTitle>
-                    <Button
-                      className="mt-3 w-full"
-                      onClick={() => {
-
-                      }}
-                    >
+                    <Button className="mt-3 w-full" onClick={() => {}}>
                       Statistics
                     </Button>
                     <Button
@@ -261,7 +274,7 @@ export default ({ params }: { params: { id: string } }) => {
                     >
                       Achievements
                     </Button>
-                    { isAnonymous ?
+                    {isAnonymous ? (
                       <Button
                         className="mt-3 w-full"
                         onClick={() => {
@@ -269,7 +282,8 @@ export default ({ params }: { params: { id: string } }) => {
                         }}
                       >
                         Login
-                      </Button> :
+                      </Button>
+                    ) : (
                       <Button
                         className="mt-3 w-full"
                         onClick={() => {
@@ -278,7 +292,7 @@ export default ({ params }: { params: { id: string } }) => {
                       >
                         Logout
                       </Button>
-                    }
+                    )}
                   </SheetHeader>
                 </SheetContent>
               </Sheet>
@@ -383,16 +397,14 @@ export default ({ params }: { params: { id: string } }) => {
             <div className="flex-1" />
           </ResizablePanel>
 
-          {/* Always render the resizable panel structure, but control visibility */}
           <>
             <ResizableHandle
               className={hasOtherParticipants ? "" : "hidden"}
               withHandle
             />
             <ResizablePanel
-              defaultSize={hasOtherParticipants ? 15 : 0}
-              minSize={hasOtherParticipants ? 15 : 0}
-              maxSize={hasOtherParticipants ? 25 : 0}
+              minSize={hasOtherParticipants ? 25 : 0}
+              maxSize={hasOtherParticipants ? 30 : 0}
               className={hasOtherParticipants ? "" : "hidden"}
             >
               <ParticipantsPanel

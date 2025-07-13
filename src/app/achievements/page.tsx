@@ -29,14 +29,14 @@ export default () => {
       ? process.env.NEXT_PUBLIC_DEVELOPMENT_SERVER_BASE_URL
       : process.env.NEXT_PUBLIC_PRODUCTION_SERVER_BASE_URL;
 
-//  useEffect(() => {
-//    if (user) {
-//      axios.get(`${serverBaseUrl}/${user.sub}/total_sessions`).then((res) => {
-//        setTotalSessionCount(res.data as number);
-//        setLoadingState(false);
-//      });
-//    }
-//  }, [user]);
+  //  useEffect(() => {
+  //    if (user) {
+  //      axios.get(`${serverBaseUrl}/${user.sub}/total_sessions`).then((res) => {
+  //        setTotalSessionCount(res.data as number);
+  //        setLoadingState(false);
+  //      });
+  //    }
+  //  }, [user]);
 
   const MilestoneCard = ({ milestone }): JSX.Element => {
     return (
