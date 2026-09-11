@@ -10,11 +10,6 @@ import { Share2Icon } from "@radix-ui/react-icons";
 
 import ClockFace from "@/components/ui/clock-face";
 import { Button } from "@/components/ui/button";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/components/ui/resizable";
 import SessionLengthChips from "@/components/ui/session-length-chips";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -24,7 +19,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import ParticipantsPanel from "@/components/ui/participants-panel";
+import ViewSwitcher from "@/components/ui/view-switcher";
+import ParticipantStrip from "@/components/ui/participant-strip";
+import RoomGallery from "@/components/ui/room-gallery";
 
 import SessionMachine from "@/lib/session-machine";
 import {
@@ -37,9 +34,15 @@ import {
   getCurrentSessionState,
   formatTime,
 } from "@/lib/session-machine-utils";
+import {
+  getStoredRoomView,
+  setStoredRoomView,
+  RoomView,
+} from "@/lib/room-view";
 
 import { socket } from "@/socket";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useRoomParticipants } from "@/hooks/useRoomParticipants";
 
 const baseUrl =
   process.env.NEXT_PUBLIC_MODE == "development"
@@ -51,16 +54,24 @@ export default ({ params }: { params: { id: string } }) => {
   const router = useRouter();
   const room = params.id;
 
+  const { participants, timerStates } = useRoomParticipants(user?.id);
+  const hasOthers = participants.length > 0;
+  const [view, setView] = useState<RoomView>("focus");
+
+  useEffect(() => {
+    setView(getStoredRoomView());
+  }, []);
+
+  const changeView = (next: RoomView) => {
+    setView(next);
+    setStoredRoomView(next);
+  };
+
   const [workPreset, setWorkPreset] = useState(25);
   const [breakPreset, setBreakPreset] = useState(5);
   const [progress, updateProgress] = useState(0);
   const [isConnected, setIsConnected] = useState(socket.connected);
   const [isRoomJoined, setIsRoomJoined] = useState(false);
-  const [hasOtherParticipants, setHasOtherParticipants] = useState(false);
-  const [
-    directionParticipantPanelDirection,
-    setDirectionParticipantPanelDirection,
-  ] = useState<"horizontal" | "vertical">("vertical");
 
   const [snapshot, send, actor] = useMachine(SessionMachine);
 
@@ -82,26 +93,10 @@ export default ({ params }: { params: { id: string } }) => {
       console.error("Socket error:", error);
     }
 
-    function onAddExistingParticipants(existingParticipants) {
-      const parsedParticipants = existingParticipants
-        .map((p) => JSON.parse(p))
-        .filter((p) => p.uid !== user?.id);
-
-      const uniqueParticipants = Array.from(
-        parsedParticipants.reduce((map, participant) => {
-          map.set(participant.uid, participant);
-          return map;
-        }, new Map()),
-      ).map(([_, participant]) => participant);
-
-      setHasOtherParticipants(uniqueParticipants.length > 0);
-    }
-
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("joinedRoom", onJoinedRoom);
     socket.on("error", onError);
-    socket.on("addExistingParticipants", onAddExistingParticipants);
 
     if (!socket.connected) {
       socket.connect();
@@ -112,7 +107,6 @@ export default ({ params }: { params: { id: string } }) => {
       socket.off("disconnect", onDisconnect);
       socket.off("joinedRoom", onJoinedRoom);
       socket.off("error", onError);
-      socket.off("addExistingParticipants", onAddExistingParticipants);
     };
   }, []);
 
@@ -133,22 +127,6 @@ export default ({ params }: { params: { id: string } }) => {
       send({ type: "SET_ROOM_ID", roomId: room });
     }
   }, [room, send]);
-
-  useEffect(() => {
-    function handleResize() {
-      if (window.innerWidth < 1050) {
-        setDirectionParticipantPanelDirection("vertical");
-      } else {
-        setDirectionParticipantPanelDirection("horizontal");
-      }
-    }
-
-    window.addEventListener("resize", handleResize);
-
-    handleResize();
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
 
   const currentTimerMachineState = getCurrentTimerState(snapshot);
   const currentSessionMachineState = getCurrentSessionState(snapshot);
@@ -227,223 +205,246 @@ export default ({ params }: { params: { id: string } }) => {
     send({ type: TimerMachineTransition.resume });
   };
 
-  const handleParticipantCountChange = (count: number) => {
-    setHasOtherParticipants(count > 0);
-  };
+  const timerCard = (
+    <div className="border-hairline bg-surface relative w-full overflow-hidden rounded-3xl border px-8 pt-8 pb-9">
+      <span
+        className={`mb-6 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${
+          currentSessionMachineState === SessionMachineState.work
+            ? "bg-accent-work-tint text-accent-work"
+            : "bg-accent-break-tint text-accent-break"
+        }`}
+      >
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${
+            currentSessionMachineState === SessionMachineState.work
+              ? "bg-accent-work"
+              : "bg-accent-break"
+          }`}
+        />
+        {currentSessionMachineState === SessionMachineState.work
+          ? "Focus Session"
+          : "Break"}
+      </span>
+      <div className="flex justify-center">
+        <ClockFace
+          size="text-8xl"
+          participantId={user?.id}
+          preset={currentPreset}
+          animated={true}
+          remainingTime={snapshot.context.remainingTime}
+          textColorClassName="text-ink"
+        />
+      </div>
+      <div className="bg-ink/5 mt-6 h-2 w-full overflow-hidden rounded-full">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ease-linear ${
+            currentSessionMachineState === SessionMachineState.work
+              ? "bg-accent-work"
+              : "bg-accent-break"
+          }`}
+          style={{
+            width: `${Math.min(Math.max(progress, 0), 100)}%`,
+          }}
+        />
+      </div>
+    </div>
+  );
+
+  const selfTile = (
+    <div className="bg-surface flex flex-col items-center gap-2 rounded-2xl p-4">
+      <span className="text-accent-work text-xs font-semibold">You</span>
+      <ClockFace
+        size="text-3xl"
+        preset={currentPreset}
+        animated={false}
+        remainingTime={snapshot.context.remainingTime}
+        textColorClassName="text-ink"
+      />
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+          currentSessionMachineState === SessionMachineState.work
+            ? "bg-accent-work-tint text-accent-work"
+            : "bg-accent-break-tint text-accent-break"
+        }`}
+      >
+        {currentSessionMachineState === SessionMachineState.work
+          ? "Focusing"
+          : "Break"}
+      </span>
+    </div>
+  );
 
   return (
     <>
       <div className="bg-canvas relative h-full w-full">
-        <ResizablePanelGroup
-          direction={directionParticipantPanelDirection}
-          className="w-full"
-        >
-          <ResizablePanel
-            defaultSize={hasOtherParticipants ? 85 : 100}
-            className="flex flex-col"
-          >
-            <div className="flex flex-row justify-between">
-              <Sheet>
-                <SheetTrigger>
-                  <Avatar className="m-5">
-                    <AvatarImage src={avatarUrl} />
-                    <AvatarFallback />
-                  </Avatar>
-                </SheetTrigger>
-                <SheetContent side="left">
-                  <SheetHeader>
-                    <SheetTitle>Account</SheetTitle>
-                    <Button
-                      className="mt-3 w-full"
-                      onClick={() => router.push("/statistics")}
-                    >
-                      Statistics
-                    </Button>
-                    <Button
-                      className="mt-3 w-full"
-                      onClick={() => router.push("/achievements")}
-                    >
-                      Achievements
-                    </Button>
-                    {isAnonymous ? (
-                      <Button
-                        className="mt-3 w-full"
-                        onClick={() => {
-                          router.push(`${baseUrl}/auth/login`);
-                        }}
-                      >
-                        Login
-                      </Button>
-                    ) : (
-                      <Button
-                        className="mt-3 w-full"
-                        onClick={() => {
-                          router.push(`${baseUrl}/auth/logout`);
-                        }}
-                      >
-                        Logout
-                      </Button>
-                    )}
-                  </SheetHeader>
-                </SheetContent>
-              </Sheet>
-              <div className="m-5 flex items-center gap-2">
-                <span className="text-ink-muted bg-ink/5 font-firaCode rounded-full px-3 py-1 text-xs tracking-widest uppercase">
-                  Room {room.slice(0, 8)}
-                </span>
-                <span
-                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-                    isConnected
-                      ? "bg-accent-work-tint text-accent-work"
-                      : "text-ink-muted bg-ink/5"
-                  }`}
-                >
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-accent-work" : "bg-ink-muted"}`}
-                  />
-                  {isConnected ? "Connected" : "Offline"}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="border-hairline text-ink hover:bg-ink/5 rounded-full bg-transparent"
-                  onClick={() => {
-                    navigator.clipboard.writeText(window.location.href);
-                    toast.success("Link copied to clipboard!");
-                  }}
-                >
-                  <Share2Icon className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            <div className="flex-1" />
-            <div className="flex flex-col items-center justify-center gap-6">
-              <div className="flex w-full max-w-md flex-col items-center gap-6">
-                <div className="border-hairline bg-surface relative w-full overflow-hidden rounded-3xl border px-8 pt-8 pb-9">
-                  <span
-                    className={`mb-6 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${
-                      currentSessionMachineState === SessionMachineState.work
-                        ? "bg-accent-work-tint text-accent-work"
-                        : "bg-accent-break-tint text-accent-break"
-                    }`}
-                  >
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        currentSessionMachineState === SessionMachineState.work
-                          ? "bg-accent-work"
-                          : "bg-accent-break"
-                      }`}
-                    />
-                    {currentSessionMachineState === SessionMachineState.work
-                      ? "Focus Session"
-                      : "Break"}
-                  </span>
-                  <div className="flex justify-center">
-                    <ClockFace
-                      size="text-8xl"
-                      participantId={user?.id}
-                      preset={currentPreset}
-                      animated={true}
-                      remainingTime={snapshot.context.remainingTime}
-                      textColorClassName="text-ink"
-                    />
-                  </div>
-                  <div className="bg-ink/5 mt-6 h-2 w-full overflow-hidden rounded-full">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ease-linear ${
-                        currentSessionMachineState === SessionMachineState.work
-                          ? "bg-accent-work"
-                          : "bg-accent-break"
-                      }`}
-                      style={{
-                        width: `${Math.min(Math.max(progress, 0), 100)}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-                {currentTimerMachineState === TimerMachineState.idle && (
+        <div className="flex h-full flex-col">
+          <div className="flex flex-row justify-between">
+            <Sheet>
+              <SheetTrigger>
+                <Avatar className="m-5">
+                  <AvatarImage src={avatarUrl} />
+                  <AvatarFallback />
+                </Avatar>
+              </SheetTrigger>
+              <SheetContent side="left">
+                <SheetHeader>
+                  <SheetTitle>Account</SheetTitle>
                   <Button
-                    className="bg-accent-work hover:bg-accent-work/90 w-full rounded-full font-semibold text-white"
-                    onClick={startTimer}
+                    className="mt-3 w-full"
+                    onClick={() => router.push("/statistics")}
                   >
-                    Start
+                    Statistics
                   </Button>
-                )}
-
-                {(currentTimerMachineState === TimerMachineState.running ||
-                  currentTimerMachineState === TimerMachineState.paused) && (
-                  <div className="flex w-full justify-center gap-3">
-                    {currentTimerMachineState == TimerMachineState.running && (
-                      <Button
-                        onClick={pauseTimer}
-                        className="bg-accent-work hover:bg-accent-work/90 flex-1 rounded-full font-semibold text-white"
-                      >
-                        Pause
-                      </Button>
-                    )}
-
-                    {currentTimerMachineState === TimerMachineState.paused && (
-                      <Button
-                        onClick={resumeTimer}
-                        className="bg-accent-work hover:bg-accent-work/90 flex-1 rounded-full font-semibold text-white"
-                      >
-                        Resume
-                      </Button>
-                    )}
-
+                  <Button
+                    className="mt-3 w-full"
+                    onClick={() => router.push("/achievements")}
+                  >
+                    Achievements
+                  </Button>
+                  {isAnonymous ? (
                     <Button
-                      onClick={stopTimer}
-                      variant="outline"
-                      className="border-hairline text-ink-muted hover:border-red-200 hover:bg-red-50 hover:text-red-600 flex-1 rounded-full bg-transparent font-semibold"
+                      className="mt-3 w-full"
+                      onClick={() => {
+                        router.push(`${baseUrl}/auth/login`);
+                      }}
                     >
-                      Stop
+                      Login
                     </Button>
-                  </div>
-                )}
-                {currentTimerMachineState === TimerMachineState.idle && (
-                  <div className="flex w-full flex-col gap-3">
-                    {currentSessionMachineState ===
-                      SessionMachineState.work && (
-                      <SessionLengthChips
-                        value={workPreset}
-                        presets={[15, 25, 45, 60]}
-                        variant="work"
-                        onChange={setWorkPreset}
-                      />
-                    )}
-                    {currentSessionMachineState ===
-                      SessionMachineState.break && (
-                      <SessionLengthChips
-                        value={breakPreset}
-                        presets={[5, 10, 15, 20]}
-                        variant="break"
-                        onChange={setBreakPreset}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
+                  ) : (
+                    <Button
+                      className="mt-3 w-full"
+                      onClick={() => {
+                        router.push(`${baseUrl}/auth/logout`);
+                      }}
+                    >
+                      Logout
+                    </Button>
+                  )}
+                </SheetHeader>
+              </SheetContent>
+            </Sheet>
+            <div className="m-5 flex items-center gap-2">
+              <span className="text-ink-muted bg-ink/5 font-firaCode rounded-full px-3 py-1 text-xs tracking-widest uppercase">
+                Room {room.slice(0, 8)}
+              </span>
+              <span
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+                  isConnected
+                    ? "bg-accent-work-tint text-accent-work"
+                    : "text-ink-muted bg-ink/5"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-accent-work" : "bg-ink-muted"}`}
+                />
+                {isConnected ? "Connected" : "Offline"}
+              </span>
+              {hasOthers && <ViewSwitcher value={view} onChange={changeView} />}
+              <Button
+                variant="outline"
+                size="icon"
+                className="border-hairline text-ink hover:bg-ink/5 rounded-full bg-transparent"
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  toast.success("Link copied to clipboard!");
+                }}
+              >
+                <Share2Icon className="h-4 w-4" />
+              </Button>
             </div>
-            <div className="flex-1" />
-          </ResizablePanel>
+          </div>
 
-          <>
-            <ResizableHandle
-              className={hasOtherParticipants ? "" : "hidden"}
-              withHandle
-            />
-            <ResizablePanel
-              minSize={hasOtherParticipants ? 25 : 0}
-              maxSize={hasOtherParticipants ? 30 : 0}
-              className={hasOtherParticipants ? "" : "hidden"}
-            >
-              <ParticipantsPanel
-                currentUserId={user?.id}
-                onParticipantCountChange={handleParticipantCountChange}
+          {view === "gallery" && hasOthers ? (
+            <div className="flex-1 overflow-y-auto p-6">
+              <RoomGallery
+                self={selfTile}
+                participants={participants}
+                timerStates={timerStates}
               />
-            </ResizablePanel>
-          </>
-        </ResizablePanelGroup>
+            </div>
+          ) : (
+            <>
+              <div className="flex-1" />
+              <div className="flex flex-col items-center justify-center gap-6">
+                <div className="flex w-full max-w-md flex-col items-center gap-6">
+                  {timerCard}
+                  {currentTimerMachineState === TimerMachineState.idle && (
+                    <Button
+                      className="bg-accent-work hover:bg-accent-work/90 w-full rounded-full font-semibold text-white"
+                      onClick={startTimer}
+                    >
+                      Start
+                    </Button>
+                  )}
+
+                  {(currentTimerMachineState === TimerMachineState.running ||
+                    currentTimerMachineState === TimerMachineState.paused) && (
+                    <div className="flex w-full justify-center gap-3">
+                      {currentTimerMachineState ==
+                        TimerMachineState.running && (
+                        <Button
+                          onClick={pauseTimer}
+                          className="bg-accent-work hover:bg-accent-work/90 flex-1 rounded-full font-semibold text-white"
+                        >
+                          Pause
+                        </Button>
+                      )}
+
+                      {currentTimerMachineState ===
+                        TimerMachineState.paused && (
+                        <Button
+                          onClick={resumeTimer}
+                          className="bg-accent-work hover:bg-accent-work/90 flex-1 rounded-full font-semibold text-white"
+                        >
+                          Resume
+                        </Button>
+                      )}
+
+                      <Button
+                        onClick={stopTimer}
+                        variant="outline"
+                        className="border-hairline text-ink-muted hover:border-red-200 hover:bg-red-50 hover:text-red-600 flex-1 rounded-full bg-transparent font-semibold"
+                      >
+                        Stop
+                      </Button>
+                    </div>
+                  )}
+                  {currentTimerMachineState === TimerMachineState.idle && (
+                    <div className="flex w-full flex-col gap-3">
+                      {currentSessionMachineState ===
+                        SessionMachineState.work && (
+                        <SessionLengthChips
+                          value={workPreset}
+                          presets={[15, 25, 45, 60]}
+                          variant="work"
+                          onChange={setWorkPreset}
+                        />
+                      )}
+                      {currentSessionMachineState ===
+                        SessionMachineState.break && (
+                        <SessionLengthChips
+                          value={breakPreset}
+                          presets={[5, 10, 15, 20]}
+                          variant="break"
+                          onChange={setBreakPreset}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex-1" />
+              {hasOthers && (
+                <div className="pb-4">
+                  <ParticipantStrip
+                    participants={participants}
+                    timerStates={timerStates}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </>
   );
