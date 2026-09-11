@@ -10,33 +10,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Spline from "@splinetool/react-spline";
-import axios from "axios";
-import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { RWebShare } from "react-web-share";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
+import { useFocusStats } from "@/hooks/useFocusStats";
 
 const hiddenMilestoneMedel =
   "https://prod.spline.design/G9KwJ8ipTOZ3kUOc/scene.splinecode";
 
 export default () => {
-  //  const { user } = useUser();
-  const [totalSessionCount, setTotalSessionCount] = useState(0);
-  const [isLoading, setLoadingState] = useState(true);
-
-  const serverBaseUrl =
-    process.env.NEXT_PUBLIC_MODE == "development"
-      ? process.env.NEXT_PUBLIC_DEVELOPMENT_SERVER_BASE_URL
-      : process.env.NEXT_PUBLIC_PRODUCTION_SERVER_BASE_URL;
-
-  //  useEffect(() => {
-  //    if (user) {
-  //      axios.get(`${serverBaseUrl}/${user.sub}/total_sessions`).then((res) => {
-  //        setTotalSessionCount(res.data as number);
-  //        setLoadingState(false);
-  //      });
-  //    }
-  //  }, [user]);
+  const router = useRouter();
+  const { stats, error } = useFocusStats();
+  const isLoading = stats === null && error === null;
+  const totalSessionCount = stats?.totalSessions ?? 0;
 
   const MilestoneCard = ({ milestone }): JSX.Element => {
     return (
@@ -89,7 +76,13 @@ export default () => {
 
   return (
     <div className="flex h-screen w-screen flex-col gap-3 p-3">
-      <h2 className="text-2xl font-bold	">Milestones</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Milestones</h2>
+        <Button variant="outline" onClick={() => router.back()}>
+          Back
+        </Button>
+      </div>
+      {error && <p className="text-sm text-red-500">{error}</p>}
       <div className="flex h-min w-full flex-nowrap justify-start gap-5 overflow-x-auto p-3">
         <AnimatePresence>
           {milestones.map((milestone) => (
