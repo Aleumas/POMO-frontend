@@ -29,10 +29,15 @@ export function SignUpForm({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (authLoading) {
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
@@ -114,8 +119,16 @@ export function SignUpForm({
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating an account..." : "Sign up"}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={authLoading || isLoading}
+              >
+                {authLoading
+                  ? "Loading..."
+                  : isLoading
+                    ? "Creating an account..."
+                    : "Sign up"}
               </Button>
             </div>
             <div className="mt-4 text-center text-sm">
