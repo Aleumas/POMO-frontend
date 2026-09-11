@@ -12,8 +12,9 @@ describe("ViewSwitcher", () => {
 
   it("marks the active view as pressed", () => {
     render(<ViewSwitcher value="gallery" onChange={() => {}} />);
-    expect(
-      screen.getByRole("button", { name: "Gallery" }),
-    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Gallery" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 });

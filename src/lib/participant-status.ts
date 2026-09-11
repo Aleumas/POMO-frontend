@@ -21,7 +21,9 @@ export const getParticipantStatus = (timerState?: {
   return { label: "Focusing", variant: "work" };
 };
 
-export const statusPillClasses = (variant: ParticipantStatusVariant): string => {
+export const statusPillClasses = (
+  variant: ParticipantStatusVariant,
+): string => {
   switch (variant) {
     case "work":
       return "bg-accent-work-tint text-accent-work";

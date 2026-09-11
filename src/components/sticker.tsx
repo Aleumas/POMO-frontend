@@ -37,7 +37,13 @@ const WOBBLE_KEYFRAMES = [
   { x: 0, y: 0, rotate: 0 },
 ];
 
-export function Sticker({ src, layers, alt, size = 96, className }: StickerProps) {
+export function Sticker({
+  src,
+  layers,
+  alt,
+  size = 96,
+  className,
+}: StickerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rotateX = useMotionValue(0);
   const rotateY = useMotionValue(0);
