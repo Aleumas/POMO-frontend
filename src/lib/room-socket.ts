@@ -13,8 +13,9 @@ export type RoomSocket = Pick<
 >;
 
 export function createRoomSocket(opts: RoomSocketOptions): RoomSocket {
+  const host = process.env.NEXT_PUBLIC_REALTIME_HOST ?? "localhost:8787";
   return new PartySocket({
-    host: process.env.NEXT_PUBLIC_REALTIME_HOST!,
+    host,
     party: "room-server",
     room: opts.room,
     query: async () => ({
