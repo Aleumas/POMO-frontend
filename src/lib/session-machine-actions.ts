@@ -3,6 +3,8 @@ import {
   getCurrentTimerState,
 } from "./session-machine-utils";
 import { socket } from "../socket";
+import { createClient } from "./supabase/client";
+import { focusSessionFromContext, insertFocusSession } from "./focus-session";
 
 const CHIME_SOUND_PATH = "/sounds/done.mp3" as const;
 
@@ -33,6 +35,16 @@ export const broadcastTimerState = (context) => {
   }
 };
 
+const recordCompletedWorkSession = (context) => {
+  const row = focusSessionFromContext(context);
+  if (!row) {
+    return;
+  }
+  insertFocusSession(createClient(), row).catch((error) => {
+    console.error("Failed to record focus session:", error);
+  });
+};
+
 // XState action creators
 export const createSessionMachineActions = () => ({
   onTimerComplete: ({ context, event }) => {
@@ -40,6 +52,7 @@ export const createSessionMachineActions = () => ({
   },
   onSessionComplete: ({ context, event }) => {
     playChime();
+    recordCompletedWorkSession(context);
   },
   broadcastTimerState: ({ context, event }) => {
     broadcastTimerState(context);
