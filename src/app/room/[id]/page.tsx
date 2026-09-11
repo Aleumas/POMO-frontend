@@ -15,8 +15,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { Progress } from "@/components/ui/progress";
-import SessionSlider from "@/components/ui/session-slider";
+import SessionLengthChips from "@/components/ui/session-length-chips";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   Sheet,
@@ -183,6 +182,8 @@ export default ({ params }: { params: { id: string } }) => {
 
       const formattedTime = formatTime(remainingTime);
       document.title = formattedTime;
+    } else {
+      updateProgress(0);
     }
   }, [snapshot.context, currentTimerMachineState]);
 
@@ -232,10 +233,10 @@ export default ({ params }: { params: { id: string } }) => {
 
   return (
     <>
-      <div className="h-full w-full">
+      <div className="bg-canvas relative h-full w-full">
         <ResizablePanelGroup
           direction={directionParticipantPanelDirection}
-          className="w-full rounded-lg border"
+          className="w-full"
         >
           <ResizablePanel
             defaultSize={hasOtherParticipants ? 85 : 100}
@@ -287,14 +288,25 @@ export default ({ params }: { params: { id: string } }) => {
                 </SheetContent>
               </Sheet>
               <div className="m-5 flex items-center gap-2">
-                {isConnected ? (
-                  <span className="text-sm text-green-600">● Connected</span>
-                ) : (
-                  <span className="text-sm text-red-600">● Disconnected</span>
-                )}
+                <span className="text-ink-muted bg-ink/5 font-firaCode rounded-full px-3 py-1 text-xs tracking-widest uppercase">
+                  Room {room.slice(0, 8)}
+                </span>
+                <span
+                  className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+                    isConnected
+                      ? "bg-accent-work-tint text-accent-work"
+                      : "text-ink-muted bg-ink/5"
+                  }`}
+                >
+                  <span
+                    className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-accent-work" : "bg-ink-muted"}`}
+                  />
+                  {isConnected ? "Connected" : "Offline"}
+                </span>
                 <Button
                   variant="outline"
                   size="icon"
+                  className="border-hairline text-ink hover:bg-ink/5 rounded-full bg-transparent"
                   onClick={() => {
                     navigator.clipboard.writeText(window.location.href);
                     toast.success("Link copied to clipboard!");
@@ -305,55 +317,85 @@ export default ({ params }: { params: { id: string } }) => {
               </div>
             </div>
             <div className="flex-1" />
-            <div className="flex flex-col items-center justify-center gap-5">
-              <h1
-                className={`${currentSessionMachineState === SessionMachineState.work ? "decoration-rose-600" : "decoration-green-600"} text-lg font-semibold underline decoration-solid decoration-4 underline-offset-8`}
-              >
-                {currentSessionMachineState}
-              </h1>
-              <div className="flex flex-col items-center gap-5">
-                <Progress
-                  hidden={
-                    currentTimerMachineState != TimerMachineState.running &&
-                    currentTimerMachineState != TimerMachineState.paused
-                  }
-                  value={progress}
-                  className="w-full"
-                  color={
-                    currentSessionMachineState === SessionMachineState.work
-                      ? "bg-rose-600"
-                      : "bg-green-600"
-                  }
-                />
-                <ClockFace
-                  size="text-8xl"
-                  participantId={user?.id}
-                  preset={currentPreset}
-                  animated={true}
-                  remainingTime={snapshot.context.remainingTime}
-                />
+            <div className="flex flex-col items-center justify-center gap-6">
+              <div className="flex w-full max-w-md flex-col items-center gap-6">
+                <div className="border-hairline bg-surface relative w-full overflow-hidden rounded-3xl border px-8 pt-8 pb-9">
+                  <span
+                    className={`mb-6 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${
+                      currentSessionMachineState === SessionMachineState.work
+                        ? "bg-accent-work-tint text-accent-work"
+                        : "bg-accent-break-tint text-accent-break"
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        currentSessionMachineState === SessionMachineState.work
+                          ? "bg-accent-work"
+                          : "bg-accent-break"
+                      }`}
+                    />
+                    {currentSessionMachineState === SessionMachineState.work
+                      ? "Focus Session"
+                      : "Break"}
+                  </span>
+                  <div className="flex justify-center">
+                    <ClockFace
+                      size="text-8xl"
+                      participantId={user?.id}
+                      preset={currentPreset}
+                      animated={true}
+                      remainingTime={snapshot.context.remainingTime}
+                      textColorClassName="text-ink"
+                    />
+                  </div>
+                  <div className="bg-ink/5 mt-6 h-2 w-full overflow-hidden rounded-full">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ease-linear ${
+                        currentSessionMachineState === SessionMachineState.work
+                          ? "bg-accent-work"
+                          : "bg-accent-break"
+                      }`}
+                      style={{
+                        width: `${Math.min(Math.max(progress, 0), 100)}%`,
+                      }}
+                    />
+                  </div>
+                </div>
                 {currentTimerMachineState === TimerMachineState.idle && (
-                  <Button className="w-full" onClick={startTimer}>
+                  <Button
+                    className="bg-accent-work hover:bg-accent-work/90 w-full rounded-full font-semibold text-white"
+                    onClick={startTimer}
+                  >
                     Start
                   </Button>
                 )}
 
                 {(currentTimerMachineState === TimerMachineState.running ||
                   currentTimerMachineState === TimerMachineState.paused) && (
-                  <div className="flex w-full justify-center gap-5">
+                  <div className="flex w-full justify-center gap-3">
                     {currentTimerMachineState == TimerMachineState.running && (
-                      <Button onClick={pauseTimer} className="flex-1">
+                      <Button
+                        onClick={pauseTimer}
+                        className="bg-accent-work hover:bg-accent-work/90 flex-1 rounded-full font-semibold text-white"
+                      >
                         Pause
                       </Button>
                     )}
 
                     {currentTimerMachineState === TimerMachineState.paused && (
-                      <Button onClick={resumeTimer} className="flex-1">
+                      <Button
+                        onClick={resumeTimer}
+                        className="bg-accent-work hover:bg-accent-work/90 flex-1 rounded-full font-semibold text-white"
+                      >
                         Resume
                       </Button>
                     )}
 
-                    <Button onClick={stopTimer} className="flex-1">
+                    <Button
+                      onClick={stopTimer}
+                      variant="outline"
+                      className="border-hairline text-ink-muted hover:border-red-200 hover:bg-red-50 hover:text-red-600 flex-1 rounded-full bg-transparent font-semibold"
+                    >
                       Stop
                     </Button>
                   </div>
@@ -362,22 +404,20 @@ export default ({ params }: { params: { id: string } }) => {
                   <div className="flex w-full flex-col gap-3">
                     {currentSessionMachineState ===
                       SessionMachineState.work && (
-                      <SessionSlider
+                      <SessionLengthChips
                         value={workPreset}
-                        color="bg-rose-600"
-                        onChange={(newValue) => {
-                          setWorkPreset(newValue);
-                        }}
+                        presets={[15, 25, 45, 60]}
+                        variant="work"
+                        onChange={setWorkPreset}
                       />
                     )}
                     {currentSessionMachineState ===
                       SessionMachineState.break && (
-                      <SessionSlider
+                      <SessionLengthChips
                         value={breakPreset}
-                        color="bg-green-600"
-                        onChange={(newValue) => {
-                          setBreakPreset(newValue);
-                        }}
+                        presets={[5, 10, 15, 20]}
+                        variant="break"
+                        onChange={setBreakPreset}
                       />
                     )}
                   </div>

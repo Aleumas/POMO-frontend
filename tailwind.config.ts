@@ -6,7 +6,14 @@ const config = {
   prefix: "",
   theme: {
     fontFamily: {
+      sans: [
+        "var(--font-space-grotesk)",
+        "ui-sans-serif",
+        "system-ui",
+        "sans-serif",
+      ],
       firaCode: ["firaCode", "mono"],
+      typewriter: ["typewriter", "monospace"],
     },
     container: {
       center: true,
@@ -50,6 +57,16 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        canvas: "#F6F6F4",
+        surface: "#FFFFFF",
+        paper: "#F6F2E9",
+        ink: "#18181B",
+        "ink-muted": "#6B7280",
+        hairline: "#ECECEC",
+        "accent-work": "#4F46E5",
+        "accent-work-tint": "#ECEBFC",
+        "accent-break": "#F59E0B",
+        "accent-break-tint": "#FDF0D5",
       },
       borderRadius: {
         lg: "var(--radius)",

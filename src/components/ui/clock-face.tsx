@@ -6,6 +6,7 @@ export default ({
   preset = 0,
   animated,
   remainingTime,
+  textColorClassName = "text-ink",
 }: {
   size: string;
   preset: number;
@@ -14,6 +15,7 @@ export default ({
   remainingTime?: number;
   updateProgress?: (time: number) => void;
   updateTitle?: (formattedTime: string) => void;
+  textColorClassName?: string;
 }) => {
   const [timerDigits, setTimerDigits] = useState(
     secondsToTime(preset * 60).split(""),
@@ -31,31 +33,31 @@ export default ({
   }, [remainingTime, preset]);
 
   return (
-    <div className="flex grow items-center justify-center">
-      <div className={`${size} font-firaCode flex`}>
-        {timerDigits.map((digit, index) => (
-          <div
-            className={`relative flex items-center justify-center ${digit === ":" ? "w-auto" : ""}`}
-            key={`digit-wrapper-${index}`}
-          >
-            <AnimatePresence key={index} mode="popLayout">
-              {animated ? (
-                <motion.span
-                  key={digit + index}
-                  initial={{ y: -30, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: 30, opacity: 0 }}
-                  transition={{ duration: 0.1, type: "tween" }}
-                >
-                  {digit}
-                </motion.span>
-              ) : (
-                <div>{digit}</div>
-              )}
-            </AnimatePresence>
-          </div>
-        ))}
-      </div>
+    <div
+      className={`${size} font-sans ${textColorClassName} flex font-bold tabular-nums`}
+    >
+      {timerDigits.map((digit, index) => (
+        <div
+          className={`relative flex items-center justify-center ${digit === ":" ? "w-auto" : ""}`}
+          key={`digit-wrapper-${index}`}
+        >
+          <AnimatePresence key={index} mode="popLayout">
+            {animated ? (
+              <motion.span
+                key={digit + index}
+                initial={{ y: -30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 30, opacity: 0 }}
+                transition={{ duration: 0.1, type: "tween" }}
+              >
+                {digit}
+              </motion.span>
+            ) : (
+              <div>{digit}</div>
+            )}
+          </AnimatePresence>
+        </div>
+      ))}
     </div>
   );
 };

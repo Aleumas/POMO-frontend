@@ -10,6 +10,50 @@
   src: url("/fonts/FiraCode-SemiBold.woff2") format("woff2");
 }
 
+@font-face {
+  font-family: "typewriter";
+  font-style: normal;
+  font-weight: normal;
+  font-display: swap;
+  src: url("/fonts/JMH Typewriter dry.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "typewriter";
+  font-style: normal;
+  font-weight: bold;
+  font-display: swap;
+  src: url("/fonts/JMH Typewriter dry-Bold.otf") format("opentype");
+}
+
+/* Ported from PaperSwordFish (private repo, Aleumas/PaperSwordFish). */
+/* Named *-texture to avoid colliding with the flat `bg-paper` Tailwind color token. */
+.bg-paper-texture {
+  background-color: #f6f2e9;
+  background-image: url("/paper/paper-tile.jpg");
+  background-repeat: repeat;
+  background-size: contain;
+}
+
+.bg-cardboard-texture {
+  background-color: #f6f2e9;
+  background-image: url("/paper/cardboard-tile.jpg");
+  background-repeat: repeat;
+  background-size: contain;
+}
+
+.tape-corner-tr {
+  background-image: url("/paper/top-right-tape.png");
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.tape-corner-bl {
+  background-image: url("/paper/bottom-left-tape.png");
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
