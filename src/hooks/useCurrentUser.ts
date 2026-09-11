@@ -15,7 +15,7 @@ export function useCurrentUser() {
     user?.user_metadata?.avatar_url ||
     anonUserAvatarUrl(displayName);
 
-  const isAnonymous = !!user && !user.email;
+  const isAnonymous = !!user?.is_anonymous;
 
   return {
     user,

@@ -2,6 +2,8 @@
 
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { signUpOrUpgrade } from "@/lib/auth/sign-up";
+import { useAuth } from "@/app/providers/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,8 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useRef } from "react";
-import HCaptcha from "@hcaptcha/react-hcaptcha";
+import { useState } from "react";
 
 export function SignUpForm({
   className,
@@ -27,13 +28,11 @@ export function SignUpForm({
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>();
   const router = useRouter();
-  const captcha = useRef();
+  const { user } = useAuth();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const supabase = createClient();
     setIsLoading(true);
     setError(null);
 
@@ -44,25 +43,12 @@ export function SignUpForm({
     }
 
     try {
-      const {
-        data: { user: newUser },
-        error,
-      } = await supabase.auth.signUp({
+      await signUpOrUpgrade(createClient(), user, {
         email,
         password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/protected`,
-          captchaToken,
-        },
+        displayName,
+        emailRedirectTo: `${window.location.origin}/protected`,
       });
-
-      // @ts-ignore
-      captcha?.current?.resetCaptcha();
-
-      if (error) throw error;
-
-      // TODO: upgrade anon user account
-
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
@@ -76,7 +62,9 @@ export function SignUpForm({
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Sign up</CardTitle>
-          <CardDescription>Create a new account</CardDescription>
+          <CardDescription>
+            Create an account to keep your focus history
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>
@@ -126,13 +114,6 @@ export function SignUpForm({
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <HCaptcha
-                ref={captcha}
-                sitekey="0bfc7ede-fe6c-468c-a6e2-091a0d0a66ba"
-                onVerify={(token) => {
-                  setCaptchaToken(token);
-                }}
-              />
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating an account..." : "Sign up"}
               </Button>
