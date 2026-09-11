@@ -22,6 +22,11 @@ import {
 import ViewSwitcher from "@/components/ui/view-switcher";
 import ParticipantStrip from "@/components/ui/participant-strip";
 import RoomGallery from "@/components/ui/room-gallery";
+import {
+  getParticipantStatus,
+  statusPillClasses,
+  statusDotClasses,
+} from "@/lib/participant-status";
 
 import SessionMachine from "@/lib/session-machine";
 import {
@@ -135,6 +140,11 @@ export default ({ params }: { params: { id: string } }) => {
     currentSessionMachineState == SessionMachineState.work
       ? workPreset
       : breakPreset;
+
+  const selfStatus = getParticipantStatus({
+    sessionState: currentSessionMachineState as string,
+    timerState: currentTimerMachineState as string,
+  });
 
   useEffect(() => {
     if (currentSessionMachineState === SessionMachineState.work) {
@@ -261,15 +271,14 @@ export default ({ params }: { params: { id: string } }) => {
         textColorClassName="text-ink"
       />
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-          currentSessionMachineState === SessionMachineState.work
-            ? "bg-accent-work-tint text-accent-work"
-            : "bg-accent-break-tint text-accent-break"
-        }`}
+        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusPillClasses(
+          selfStatus.variant,
+        )}`}
       >
-        {currentSessionMachineState === SessionMachineState.work
-          ? "Focusing"
-          : "Break"}
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${statusDotClasses(selfStatus.variant)}`}
+        />
+        {selfStatus.label}
       </span>
     </div>
   );

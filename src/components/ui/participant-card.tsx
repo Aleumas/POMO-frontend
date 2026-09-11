@@ -7,6 +7,16 @@ import {
   statusDotClasses,
 } from "@/lib/participant-status";
 
+const getInitials = (displayName: string): string => {
+  if (!displayName) return "";
+  return displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]!.toUpperCase())
+    .join("");
+};
+
 export default ({
   displayName,
   avatar,
@@ -19,6 +29,7 @@ export default ({
   layout?: "tile" | "strip";
 }) => {
   const status = getParticipantStatus(timerState);
+  const initials = getInitials(displayName);
 
   const StatusPill = (
     <span
@@ -38,7 +49,7 @@ export default ({
       <div className="border-hairline bg-surface flex shrink-0 items-center gap-3 rounded-2xl border px-3 py-2">
         <Avatar className="h-9 w-9">
           <AvatarImage src={avatar} alt={`${displayName}'s avatar`} />
-          <AvatarFallback />
+          <AvatarFallback>{initials}</AvatarFallback>
         </Avatar>
         <div className="flex flex-col">
           <span className="text-ink text-sm font-semibold">{displayName}</span>
@@ -61,7 +72,7 @@ export default ({
     <div className="border-hairline bg-surface flex flex-col items-center gap-2 rounded-2xl border p-4 transition-shadow hover:shadow-sm">
       <Avatar className="h-12 w-12">
         <AvatarImage src={avatar} alt={`${displayName}'s avatar`} />
-        <AvatarFallback />
+        <AvatarFallback>{initials}</AvatarFallback>
       </Avatar>
       <span className="text-ink text-sm font-semibold">{displayName}</span>
       <ClockFace

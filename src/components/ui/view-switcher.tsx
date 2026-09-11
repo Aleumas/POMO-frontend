@@ -21,6 +21,7 @@ export default ({
         return (
           <button
             key={option.value}
+            type="button"
             aria-pressed={active}
             onClick={() => onChange(option.value)}
             className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
