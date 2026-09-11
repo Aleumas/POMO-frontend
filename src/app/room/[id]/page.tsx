@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useMachine } from "@xstate/react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-
 import { toast } from "sonner";
-
 import { Share2Icon } from "@radix-ui/react-icons";
 
 import ClockFace from "@/components/ui/clock-face";
@@ -27,234 +24,124 @@ import {
   statusPillClasses,
   statusDotClasses,
 } from "@/lib/participant-status";
-
-import SessionMachine from "@/lib/session-machine";
-import {
-  TimerMachineState,
-  TimerMachineTransition,
-  SessionMachineState,
-} from "@/lib/session-machine-types";
-import {
-  getCurrentTimerState,
-  getCurrentSessionState,
-  formatTime,
-} from "@/lib/session-machine-utils";
 import {
   getStoredRoomView,
   setStoredRoomView,
   RoomView,
 } from "@/lib/room-view";
-
-import { socket } from "@/socket";
+import {
+  DEFAULT_TIMER,
+  type Participant,
+  type TimerState,
+} from "@/lib/room-protocol";
+import { formatTime, progressPercent, toTimerState } from "@/lib/timer-view";
+import { playChime } from "@/lib/chime";
+import { createClient } from "@/lib/supabase/client";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useRoomParticipants } from "@/hooks/useRoomParticipants";
+import { useRoom } from "@/hooks/useRoom";
+import { useServerNow } from "@/hooks/useServerNow";
 
 const baseUrl =
   process.env.NEXT_PUBLIC_MODE == "development"
     ? process.env.NEXT_PUBLIC_DEVELOPMENT_BASE_URL
     : process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL;
 
+const getToken = async () =>
+  (await createClient().auth.getSession()).data.session?.access_token ?? null;
+
 export default ({ params }: { params: { id: string } }) => {
   const { user, displayName, avatarUrl, isAnonymous } = useCurrentUser();
   const router = useRouter();
   const room = params.id;
 
-  const { participants, timerStates } = useRoomParticipants(user?.id);
-  const hasOthers = participants.length > 0;
-  const [view, setView] = useState<RoomView>("focus");
+  const identity = useMemo(
+    () => (user?.id ? { displayName, avatar: avatarUrl, getToken } : null),
+    [user?.id, displayName, avatarUrl],
+  );
 
+  const { connected, self, others, offsetMs, send } = useRoom(room, identity, {
+    onSessionCompleted: (m) => {
+      if (m.uid === user?.id) {
+        playChime();
+        toast.success("Session completed!");
+        return;
+      }
+      const who = others.find((p) => p.uid === m.uid)?.displayName ?? "Someone";
+      toast(
+        `${who} finished a ${m.phase === "work" ? "focus" : "break"} session`,
+      );
+    },
+    onParticipantJoined: (p) => toast(`${p.displayName} joined room`),
+    onParticipantLeft: (uid) => {
+      const who = others.find((p) => p.uid === uid)?.displayName ?? "Someone";
+      toast(`${who} left room`);
+    },
+  });
+
+  const timer = self?.timer ?? DEFAULT_TIMER;
+  const now = useServerNow(offsetMs, timer.status === "running");
+  const timerState = toTimerState(timer, now);
+  const progress = progressPercent(timer, now);
+  const isWork = timer.phase === "work";
+  const selfStatus = getParticipantStatus(timerState);
+
+  const participants: Participant[] = others.map(
+    ({ uid, displayName, avatar }) => ({
+      uid,
+      displayName,
+      avatar,
+    }),
+  );
+  const timerStates = new Map<string, TimerState>(
+    others.map((p) => [p.uid, toTimerState(p.timer, now)]),
+  );
+  const hasOthers = others.length > 0;
+
+  const [view, setView] = useState<RoomView>("focus");
   useEffect(() => {
     setView(getStoredRoomView());
   }, []);
-
   const changeView = (next: RoomView) => {
     setView(next);
     setStoredRoomView(next);
   };
 
-  const [workPreset, setWorkPreset] = useState(25);
-  const [breakPreset, setBreakPreset] = useState(5);
-  const [progress, updateProgress] = useState(0);
-  const [isConnected, setIsConnected] = useState(socket.connected);
-  const [isRoomJoined, setIsRoomJoined] = useState(false);
-
-  const [snapshot, send, actor] = useMachine(SessionMachine);
-
   useEffect(() => {
-    function onConnect() {
-      setIsConnected(true);
+    if (timer.status !== "idle") {
+      document.title = formatTime(timerState.remainingTime);
     }
-
-    function onDisconnect() {
-      setIsConnected(false);
-      setIsRoomJoined(false);
-    }
-
-    function onJoinedRoom(data) {
-      setIsRoomJoined(true);
-    }
-
-    function onError(error) {
-      console.error("Socket error:", error);
-    }
-
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("joinedRoom", onJoinedRoom);
-    socket.on("error", onError);
-
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("joinedRoom", onJoinedRoom);
-      socket.off("error", onError);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isConnected && user?.id && room && !isRoomJoined) {
-      socket.emit("joinRoom", room, displayName, avatarUrl, user.id);
-    }
-  }, [isConnected, user?.id, room, isRoomJoined]);
-
-  useEffect(() => {
-    if (user?.id) {
-      send({ type: "SET_USER_ID", userId: user.id });
-    }
-  }, [user?.id, send]);
-
-  useEffect(() => {
-    if (room) {
-      send({ type: "SET_ROOM_ID", roomId: room });
-    }
-  }, [room, send]);
-
-  const currentTimerMachineState = getCurrentTimerState(snapshot);
-  const currentSessionMachineState = getCurrentSessionState(snapshot);
-
-  const currentPreset =
-    currentSessionMachineState == SessionMachineState.work
-      ? workPreset
-      : breakPreset;
-
-  const selfStatus = getParticipantStatus({
-    sessionState: currentSessionMachineState as string,
-    timerState: currentTimerMachineState as string,
-  });
-
-  useEffect(() => {
-    if (currentSessionMachineState === SessionMachineState.work) {
-      send({ type: "SET_WORK_DURATION", duration: workPreset * 60 });
-    }
-  }, [workPreset, currentSessionMachineState, send]);
-
-  useEffect(() => {
-    if (currentSessionMachineState === SessionMachineState.break) {
-      send({ type: "SET_BREAK_DURATION", duration: breakPreset * 60 });
-    }
-  }, [breakPreset, currentSessionMachineState, send]);
-
-  useEffect(() => {
-    if (
-      currentTimerMachineState === TimerMachineState.running ||
-      currentTimerMachineState === TimerMachineState.paused
-    ) {
-      const { remainingTime, duration } = snapshot.context;
-      const progressValue =
-        duration > 0 ? ((duration - remainingTime) / duration) * 100 : 0;
-      updateProgress(progressValue);
-
-      const formattedTime = formatTime(remainingTime);
-      document.title = formattedTime;
-    } else {
-      updateProgress(0);
-    }
-  }, [snapshot.context, currentTimerMachineState]);
-
-  useEffect(() => {
-    send({ type: "SET_WORK_DURATION", duration: workPreset * 60 });
-    send({ type: "SET_BREAK_DURATION", duration: breakPreset * 60 });
-  }, []);
-
-  useEffect(() => {
-    const sessionTransitionOccurred =
-      (currentSessionMachineState === SessionMachineState.work &&
-        currentTimerMachineState === TimerMachineState.idle &&
-        snapshot.context.remainingTime === 0) ||
-      (currentSessionMachineState === SessionMachineState.break &&
-        currentTimerMachineState === TimerMachineState.idle &&
-        snapshot.context.remainingTime === 0);
-
-    if (sessionTransitionOccurred && user?.id) {
-      toast.success("Session completed!");
-    }
-  }, [
-    currentSessionMachineState,
-    currentTimerMachineState,
-    snapshot.context,
-    user?.id,
-  ]);
-
-  const startTimer = () => {
-    send({ type: TimerMachineTransition.start });
-  };
-
-  const stopTimer = () => {
-    send({ type: TimerMachineTransition.stop });
-  };
-
-  const pauseTimer = () => {
-    send({ type: TimerMachineTransition.pause });
-  };
-
-  const resumeTimer = () => {
-    send({ type: TimerMachineTransition.resume });
-  };
+  }, [timer.status, timerState.remainingTime]);
 
   const timerCard = (
     <div className="border-hairline bg-surface relative w-full overflow-hidden rounded-3xl border px-8 pt-8 pb-9">
       <span
         className={`mb-6 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase ${
-          currentSessionMachineState === SessionMachineState.work
+          isWork
             ? "bg-accent-work-tint text-accent-work"
             : "bg-accent-break-tint text-accent-break"
         }`}
       >
         <span
-          className={`h-1.5 w-1.5 rounded-full ${
-            currentSessionMachineState === SessionMachineState.work
-              ? "bg-accent-work"
-              : "bg-accent-break"
-          }`}
+          className={`h-1.5 w-1.5 rounded-full ${isWork ? "bg-accent-work" : "bg-accent-break"}`}
         />
-        {currentSessionMachineState === SessionMachineState.work
-          ? "Focus Session"
-          : "Break"}
+        {isWork ? "Focus Session" : "Break"}
       </span>
       <div className="flex justify-center">
         <ClockFace
           size="text-8xl"
           participantId={user?.id}
-          preset={currentPreset}
+          preset={timerState.duration / 60}
           animated={true}
-          remainingTime={snapshot.context.remainingTime}
+          remainingTime={timerState.remainingTime}
           textColorClassName="text-ink"
         />
       </div>
       <div className="bg-ink/5 mt-6 h-2 w-full overflow-hidden rounded-full">
         <div
           className={`h-full rounded-full transition-all duration-500 ease-linear ${
-            currentSessionMachineState === SessionMachineState.work
-              ? "bg-accent-work"
-              : "bg-accent-break"
+            isWork ? "bg-accent-work" : "bg-accent-break"
           }`}
-          style={{
-            width: `${Math.min(Math.max(progress, 0), 100)}%`,
-          }}
+          style={{ width: `${progress}%` }}
         />
       </div>
     </div>
@@ -265,9 +152,9 @@ export default ({ params }: { params: { id: string } }) => {
       <span className="text-accent-work text-xs font-semibold">You</span>
       <ClockFace
         size="text-3xl"
-        preset={currentPreset}
+        preset={timerState.duration / 60}
         animated={false}
-        remainingTime={snapshot.context.remainingTime}
+        remainingTime={timerState.remainingTime}
         textColorClassName="text-ink"
       />
       <span
@@ -282,6 +169,8 @@ export default ({ params }: { params: { id: string } }) => {
       </span>
     </div>
   );
+
+  const controlsDisabled = !connected || !self;
 
   return (
     <>
@@ -313,18 +202,14 @@ export default ({ params }: { params: { id: string } }) => {
                   {isAnonymous ? (
                     <Button
                       className="mt-3 w-full"
-                      onClick={() => {
-                        router.push(`${baseUrl}/auth/login`);
-                      }}
+                      onClick={() => router.push(`${baseUrl}/auth/login`)}
                     >
                       Login
                     </Button>
                   ) : (
                     <Button
                       className="mt-3 w-full"
-                      onClick={() => {
-                        router.push(`${baseUrl}/auth/logout`);
-                      }}
+                      onClick={() => router.push(`${baseUrl}/auth/logout`)}
                     >
                       Logout
                     </Button>
@@ -338,15 +223,15 @@ export default ({ params }: { params: { id: string } }) => {
               </span>
               <span
                 className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
-                  isConnected
+                  connected
                     ? "bg-accent-work-tint text-accent-work"
                     : "text-ink-muted bg-ink/5"
                 }`}
               >
                 <span
-                  className={`h-1.5 w-1.5 rounded-full ${isConnected ? "bg-accent-work" : "bg-ink-muted"}`}
+                  className={`h-1.5 w-1.5 rounded-full ${connected ? "bg-accent-work" : "bg-ink-muted"}`}
                 />
-                {isConnected ? "Connected" : "Offline"}
+                {connected ? "Connected" : "Offline"}
               </span>
               {hasOthers && <ViewSwitcher value={view} onChange={changeView} />}
               <Button
@@ -377,40 +262,40 @@ export default ({ params }: { params: { id: string } }) => {
               <div className="flex flex-col items-center justify-center gap-6">
                 <div className="flex w-full max-w-md flex-col items-center gap-6">
                   {timerCard}
-                  {currentTimerMachineState === TimerMachineState.idle && (
+
+                  {timer.status === "idle" && (
                     <Button
                       className="bg-accent-work hover:bg-accent-work/90 w-full rounded-full font-semibold text-white"
-                      onClick={startTimer}
+                      disabled={controlsDisabled}
+                      onClick={() => send({ type: "start" })}
                     >
                       Start
                     </Button>
                   )}
 
-                  {(currentTimerMachineState === TimerMachineState.running ||
-                    currentTimerMachineState === TimerMachineState.paused) && (
+                  {timer.status !== "idle" && (
                     <div className="flex w-full justify-center gap-3">
-                      {currentTimerMachineState ==
-                        TimerMachineState.running && (
+                      {timer.status === "running" && (
                         <Button
-                          onClick={pauseTimer}
+                          disabled={controlsDisabled}
+                          onClick={() => send({ type: "pause" })}
                           className="bg-accent-work hover:bg-accent-work/90 flex-1 rounded-full font-semibold text-white"
                         >
                           Pause
                         </Button>
                       )}
-
-                      {currentTimerMachineState ===
-                        TimerMachineState.paused && (
+                      {timer.status === "paused" && (
                         <Button
-                          onClick={resumeTimer}
+                          disabled={controlsDisabled}
+                          onClick={() => send({ type: "resume" })}
                           className="bg-accent-work hover:bg-accent-work/90 flex-1 rounded-full font-semibold text-white"
                         >
                           Resume
                         </Button>
                       )}
-
                       <Button
-                        onClick={stopTimer}
+                        disabled={controlsDisabled}
+                        onClick={() => send({ type: "stop" })}
                         variant="outline"
                         className="border-hairline text-ink-muted hover:border-red-200 hover:bg-red-50 hover:text-red-600 flex-1 rounded-full bg-transparent font-semibold"
                       >
@@ -418,24 +303,34 @@ export default ({ params }: { params: { id: string } }) => {
                       </Button>
                     </div>
                   )}
-                  {currentTimerMachineState === TimerMachineState.idle && (
+
+                  {timer.status === "idle" && (
                     <div className="flex w-full flex-col gap-3">
-                      {currentSessionMachineState ===
-                        SessionMachineState.work && (
+                      {isWork ? (
                         <SessionLengthChips
-                          value={workPreset}
+                          value={timer.workDurationMs / 60_000}
                           presets={[15, 25, 45, 60]}
                           variant="work"
-                          onChange={setWorkPreset}
+                          onChange={(minutes) =>
+                            send({
+                              type: "setPreset",
+                              phase: "work",
+                              durationMs: minutes * 60_000,
+                            })
+                          }
                         />
-                      )}
-                      {currentSessionMachineState ===
-                        SessionMachineState.break && (
+                      ) : (
                         <SessionLengthChips
-                          value={breakPreset}
+                          value={timer.breakDurationMs / 60_000}
                           presets={[5, 10, 15, 20]}
                           variant="break"
-                          onChange={setBreakPreset}
+                          onChange={(minutes) =>
+                            send({
+                              type: "setPreset",
+                              phase: "break",
+                              durationMs: minutes * 60_000,
+                            })
+                          }
                         />
                       )}
                     </div>

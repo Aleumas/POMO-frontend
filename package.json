@@ -31,7 +31,6 @@
     "@splinetool/runtime": "^1.0.74",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.3",
-    "@xstate/react": "^4.1.0",
     "axios": "^1.6.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
@@ -46,14 +45,12 @@
     "react-resizable-panels": "^2.0.12",
     "react-web-share": "^2.0.2",
     "sanity": "^3.57.1",
-    "socket.io-client": "^4.7.4",
     "sonner": "^1.4.3",
     "styled-components": "^6.1.13",
     "tailwind-merge": "^2.2.1",
     "tailwindcss-animate": "^1.0.7",
     "unique-names-generator": "^4.7.1",
-    "uuid": "^9.0.1",
-    "xstate": "^5.9.1"
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
