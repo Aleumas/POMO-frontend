@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import ParticipantCard from "@/components/ui/participant-card";
-import type { Participant, TimerState } from "@/hooks/useRoomParticipants";
+import type { Participant, TimerState } from "@/lib/room-protocol";
 
 export default ({
   self,

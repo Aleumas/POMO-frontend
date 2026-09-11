@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import RoomGallery from "@/components/ui/room-gallery";
-import type { Participant, TimerState } from "@/hooks/useRoomParticipants";
+import type { Participant, TimerState } from "@/lib/room-protocol";
 
 const participants: Participant[] = [
-  { uid: "maya", displayName: "Maya", socketId: "s1", avatar: "" },
+  { uid: "maya", displayName: "Maya", avatar: "" },
 ];
 
 describe("RoomGallery", () => {

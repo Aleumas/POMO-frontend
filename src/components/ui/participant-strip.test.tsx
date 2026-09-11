@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import ParticipantStrip from "@/components/ui/participant-strip";
-import type { Participant, TimerState } from "@/hooks/useRoomParticipants";
+import type { Participant, TimerState } from "@/lib/room-protocol";
 
 const participants: Participant[] = [
-  { uid: "maya", displayName: "Maya", socketId: "s1", avatar: "" },
-  { uid: "sam", displayName: "Sam", socketId: "s2", avatar: "" },
+  { uid: "maya", displayName: "Maya", avatar: "" },
+  { uid: "sam", displayName: "Sam", avatar: "" },
 ];
 
 describe("ParticipantStrip", () => {

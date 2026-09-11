@@ -1,6 +1,6 @@
 import ClockFace from "./clock-face";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { TimerState } from "@/hooks/useRoomParticipants";
+import { TimerState } from "@/lib/room-protocol";
 import {
   getParticipantStatus,
   statusPillClasses,
