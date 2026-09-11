@@ -38,7 +38,6 @@ import {
   getCurrentSessionState,
   formatTime,
 } from "@/lib/session-machine-utils";
-import { session } from "@/lib/supabase/session-utils";
 
 import { socket } from "@/socket";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -117,16 +116,6 @@ export default ({ params }: { params: { id: string } }) => {
       socket.off("addExistingParticipants", onAddExistingParticipants);
     };
   }, []);
-
-  //  useEffect(() => {
-  //    async function checkSessionExists() {
-  //      if (user) {
-  //        session(user.id, room);
-  //      }
-  //    }
-  //
-  //    checkSessionExists();
-  //  }, [user])
 
   useEffect(() => {
     if (isConnected && user?.id && room && !isRoomJoined) {
@@ -263,14 +252,15 @@ export default ({ params }: { params: { id: string } }) => {
                 <SheetContent side="left">
                   <SheetHeader>
                     <SheetTitle>Account</SheetTitle>
-                    <Button className="mt-3 w-full" onClick={() => {}}>
+                    <Button
+                      className="mt-3 w-full"
+                      onClick={() => router.push("/statistics")}
+                    >
                       Statistics
                     </Button>
                     <Button
-                      className="mt-3 w-full hidden"
-                      onClick={() => {
-                        router.push(`${baseUrl}/achievements`);
-                      }}
+                      className="mt-3 w-full"
+                      onClick={() => router.push("/achievements")}
                     >
                       Achievements
                     </Button>
