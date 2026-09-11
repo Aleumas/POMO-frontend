@@ -1,63 +1,77 @@
 import ClockFace from "./clock-face";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ContextMenu, ContextMenuTrigger } from "@/components/ui/context-menu";
-import { SessionMachineState } from "@/lib/session-machine-types";
+import { TimerState } from "@/hooks/useRoomParticipants";
+import {
+  getParticipantStatus,
+  statusPillClasses,
+  statusDotClasses,
+} from "@/lib/participant-status";
 
 export default ({
-  participant,
-  avatar,
   displayName,
-  preset = 0,
-  machineState,
+  avatar,
+  timerState,
+  layout = "tile",
 }: {
-  participant: string;
-  participantSocket: string;
-  avatar: string;
   displayName: string;
-  preset?: number;
-  machineState?: any;
+  avatar: string;
+  timerState?: TimerState;
+  layout?: "tile" | "strip";
 }) => {
-  const modeBorderColor = {
-    idle: "border-white",
-    running:
-      Object.keys(machineState?.value ?? {})[0] == SessionMachineState.work
-        ? "border-rose-600"
-        : "border-green-600",
-    paused: "border-orange-400",
-  };
+  const status = getParticipantStatus(timerState);
+
+  const StatusPill = (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusPillClasses(
+        status.variant,
+      )}`}
+    >
+      <span
+        className={`h-1.5 w-1.5 rounded-full ${statusDotClasses(status.variant)}`}
+      />
+      {status.label}
+    </span>
+  );
+
+  if (layout === "strip") {
+    return (
+      <div className="border-hairline bg-surface flex shrink-0 items-center gap-3 rounded-2xl border px-3 py-2">
+        <Avatar className="h-9 w-9">
+          <AvatarImage src={avatar} alt={`${displayName}'s avatar`} />
+          <AvatarFallback />
+        </Avatar>
+        <div className="flex flex-col">
+          <span className="text-ink text-sm font-semibold">{displayName}</span>
+          <ClockFace
+            size="text-sm"
+            preset={0}
+            animated={false}
+            remainingTime={timerState?.remainingTime}
+            textColorClassName="text-ink-muted"
+          />
+        </div>
+        <span
+          className={`ml-1 h-2 w-2 rounded-full ${statusDotClasses(status.variant)}`}
+        />
+      </div>
+    );
+  }
 
   return (
-    <>
-      <ContextMenu>
-        <ContextMenuTrigger
-          className={`${modeBorderColor[Object.values(machineState?.value ?? {})[0] as string]} bg-background hover:bg-accent hover:text-accent-foreground m-2 flex shrink-0 basis-1/4 flex-col items-center justify-center gap-2 rounded-lg border-2 p-2`}
-        >
-          <Avatar>
-            <AvatarImage src={avatar} alt={participant + "'s avatar"} />
-            <AvatarFallback></AvatarFallback>
-          </Avatar>
-          <ClockFace
-            size="text-xl"
-            participantId={participant}
-            preset={preset}
-            remainingTime={machineState?.context?.remainingTime}
-            animated={false}
-          />
-          <div className="font-medium text-sm text-center">{displayName}</div>
-        </ContextMenuTrigger>
-
-        {/*<ContextMenuContent className="w-30">*/}
-        {/*  <ContextMenuItem*/}
-        {/*    inset*/}
-        {/*    onClick={() => {*/}
-        {/*      // Socket sync functionality disabled for clean approach*/}
-        {/*      console.log("Sync functionality disabled in clean mode");*/}
-        {/*    }}*/}
-        {/*  >*/}
-        {/*    {inSync ? "Unsync" : "Sync"}*/}
-        {/*  </ContextMenuItem>*/}
-        {/*</ContextMenuContent>*/}
-      </ContextMenu>
-    </>
+    <div className="border-hairline bg-surface flex flex-col items-center gap-2 rounded-2xl border p-4 transition-shadow hover:shadow-sm">
+      <Avatar className="h-12 w-12">
+        <AvatarImage src={avatar} alt={`${displayName}'s avatar`} />
+        <AvatarFallback />
+      </Avatar>
+      <span className="text-ink text-sm font-semibold">{displayName}</span>
+      <ClockFace
+        size="text-2xl"
+        preset={0}
+        animated={false}
+        remainingTime={timerState?.remainingTime}
+        textColorClassName="text-ink"
+      />
+      {StatusPill}
+    </div>
   );
 };
