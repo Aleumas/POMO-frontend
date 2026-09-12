@@ -10,10 +10,14 @@ export default function StatisticsPage() {
   const { stats, error } = useFocusStats();
 
   return (
-    <div className="flex h-screen w-screen flex-col gap-5 p-5">
+    <div className="bg-canvas flex h-screen w-screen flex-col gap-5 p-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Statistics</h2>
-        <Button variant="outline" onClick={() => router.back()}>
+        <h2 className="text-ink text-2xl font-bold">Statistics</h2>
+        <Button
+          variant="outline"
+          className="border-hairline text-ink hover:bg-ink/5 rounded-full bg-transparent font-semibold"
+          onClick={() => router.back()}
+        >
           Back
         </Button>
       </div>

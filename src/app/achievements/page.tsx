@@ -33,22 +33,26 @@ export default () => {
     return (
       <div className="shink-0 flex h-96 w-64">
         {totalSessionCount < milestone.value ? (
-          <Card className="flex h-full w-64 flex-col justify-between p-6">
-            <CardTitle className="text-center">{milestone.title}</CardTitle>
+          <Card className="bg-surface border-hairline flex h-full w-64 flex-col justify-between p-6">
+            <CardTitle className="text-ink text-center">
+              {milestone.title}
+            </CardTitle>
             <CardContent className="h-48">
               <Spline scene={hiddenMilestoneMedel} />
             </CardContent>
             <CardFooter className="h-20">
-              <h2 className="text-center text-lg font-medium">
+              <h2 className="text-ink-muted text-center text-lg font-medium">
                 {milestone.requirement}
               </h2>
             </CardFooter>
           </Card>
         ) : (
-          <Card className="flex h-full w-64 flex-col justify-between">
+          <Card className="bg-surface border-hairline flex h-full w-64 flex-col justify-between">
             <CardHeader>
-              <CardTitle>{milestone.title}</CardTitle>
-              <CardDescription>{milestone.description}</CardDescription>
+              <CardTitle className="text-ink">{milestone.title}</CardTitle>
+              <CardDescription className="text-ink-muted">
+                {milestone.description}
+              </CardDescription>
             </CardHeader>
             <CardContent className="h-52">
               <Spline scene={milestone.medal} />
@@ -61,7 +65,9 @@ export default () => {
                   title: milestone.title,
                 }}
               >
-                <Button className="w-full">Share</Button>
+                <Button className="bg-accent-work hover:bg-accent-work/90 w-full rounded-full font-semibold text-white">
+                  Share
+                </Button>
               </RWebShare>
             </CardFooter>
           </Card>
@@ -79,10 +85,14 @@ export default () => {
   };
 
   return (
-    <div className="flex h-screen w-screen flex-col gap-3 p-3">
+    <div className="bg-canvas flex h-screen w-screen flex-col gap-3 p-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Milestones</h2>
-        <Button variant="outline" onClick={() => router.back()}>
+        <h2 className="text-ink text-2xl font-bold">Milestones</h2>
+        <Button
+          variant="outline"
+          className="border-hairline text-ink hover:bg-ink/5 rounded-full bg-transparent font-semibold"
+          onClick={() => router.back()}
+        >
           Back
         </Button>
       </div>

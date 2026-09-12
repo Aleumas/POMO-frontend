@@ -193,37 +193,42 @@ export default ({ params }: { params: Promise<{ id: string }> }) => {
                   <AvatarFallback />
                 </Avatar>
               </SheetTrigger>
-              <SheetContent side="left">
+              <SheetContent side="left" className="bg-surface border-hairline">
                 <SheetHeader>
-                  <SheetTitle>Account</SheetTitle>
+                  <SheetTitle className="text-ink">Account</SheetTitle>
+                </SheetHeader>
+                <div className="mt-3 flex flex-col gap-3">
                   <Button
-                    className="mt-3 w-full"
+                    variant="outline"
+                    className="border-hairline text-ink hover:bg-ink/5 w-full rounded-full bg-transparent font-semibold"
                     onClick={() => router.push("/statistics")}
                   >
                     Statistics
                   </Button>
                   <Button
-                    className="mt-3 w-full"
+                    variant="outline"
+                    className="border-hairline text-ink hover:bg-ink/5 w-full rounded-full bg-transparent font-semibold"
                     onClick={() => router.push("/achievements")}
                   >
                     Achievements
                   </Button>
                   {isAnonymous ? (
                     <Button
-                      className="mt-3 w-full"
+                      className="bg-accent-work hover:bg-accent-work/90 w-full rounded-full font-semibold text-white"
                       onClick={() => router.push(`${baseUrl}/auth/login`)}
                     >
                       Login
                     </Button>
                   ) : (
                     <Button
-                      className="mt-3 w-full"
+                      variant="outline"
+                      className="border-hairline text-ink-muted hover:border-red-200 hover:bg-red-50 hover:text-red-600 w-full rounded-full bg-transparent font-semibold"
                       onClick={() => signOut({})}
                     >
                       Logout
                     </Button>
                   )}
-                </SheetHeader>
+                </div>
               </SheetContent>
             </Sheet>
             <div className="m-5 flex items-center gap-2">
