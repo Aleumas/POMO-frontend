@@ -185,7 +185,7 @@ export default ({ params }: { params: Promise<{ id: string }> }) => {
     <>
       <div className="bg-canvas relative h-full w-full">
         <div className="flex h-full flex-col">
-          <div className="flex flex-row justify-between">
+          <div className="flex flex-row flex-wrap justify-between">
             <Sheet>
               <SheetTrigger>
                 <Avatar className="m-5">
@@ -231,7 +231,7 @@ export default ({ params }: { params: Promise<{ id: string }> }) => {
                 </div>
               </SheetContent>
             </Sheet>
-            <div className="m-5 flex items-center gap-2">
+            <div className="m-5 flex flex-wrap items-center justify-end gap-2">
               <span className="text-ink-muted bg-ink/5 font-firaCode rounded-full px-3 py-1 text-xs tracking-widest uppercase">
                 Room {room.slice(0, 3)}
               </span>
