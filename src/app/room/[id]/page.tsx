@@ -36,7 +36,7 @@ import {
 } from "@/lib/room-protocol";
 import { formatTime, progressPercent, toTimerState } from "@/lib/timer-view";
 import { playChime } from "@/lib/chime";
-import { authClient, ensureAnonUser } from "@/lib/auth-client";
+import { authClient, ensureAnonUser, signOut } from "@/lib/auth-client";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRoom } from "@/hooks/useRoom";
 import { useServerNow } from "@/hooks/useServerNow";
@@ -83,7 +83,12 @@ export default ({ params }: { params: Promise<{ id: string }> }) => {
   });
 
   const timer = self?.timer ?? DEFAULT_TIMER;
-  const now = useServerNow(offsetMs, timer.status === "running");
+  // `now` drives remaining-time display for every participant, not just
+  // self, so keep ticking while anyone's timer is running.
+  const anyRunning =
+    timer.status === "running" ||
+    others.some((p) => p.timer.status === "running");
+  const now = useServerNow(offsetMs, anyRunning);
   const timerState = toTimerState(timer, now);
   const progress = progressPercent(timer, now);
   const isWork = timer.phase === "work";
@@ -213,7 +218,7 @@ export default ({ params }: { params: Promise<{ id: string }> }) => {
                   ) : (
                     <Button
                       className="mt-3 w-full"
-                      onClick={() => router.push(`${baseUrl}/auth/logout`)}
+                      onClick={() => signOut({})}
                     >
                       Logout
                     </Button>
