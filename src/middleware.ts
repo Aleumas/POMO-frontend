@@ -1,7 +1,13 @@
 import { updateSession } from "@/lib/supabase/middleware";
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  const { hostname } = request.nextUrl;
+  if (hostname.startsWith("www.")) {
+    const url = request.nextUrl.clone();
+    url.hostname = hostname.slice(4);
+    return NextResponse.redirect(url, 308);
+  }
   return await updateSession(request);
 }
 
