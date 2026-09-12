@@ -4,15 +4,16 @@
 
 **Goal:** Move the POMO Next.js app off Netlify onto Cloudflare Workers using the OpenNext adapter, with Supabase auth/data left fully in place and working.
 
-**Architecture:** Bump Next.js to 14.2.x, add `@opennextjs/cloudflare` + Wrangler config, and run the app in the Workers runtime. No auth, data, or realtime changes in this phase — this is purely the hosting platform move, done in isolation to de-risk it before Better Auth/D1.
+**Architecture:** Bump Next.js to 15.x (React stays on 18), add `@opennextjs/cloudflare` + Wrangler config, and run the app in the Workers runtime. No auth, data, or realtime changes in this phase — this is purely the hosting platform move, done in isolation to de-risk it before Better Auth/D1. (The current OpenNext adapter requires Next ≥ 15.5.24; Next 14 is no longer supported by the adapter.)
 
-**Tech Stack:** Next.js 14.2.x (App Router, React 18), `@opennextjs/cloudflare`, Wrangler, Cloudflare Workers + R2 (incremental cache).
+**Tech Stack:** Next.js 15.x (App Router, React 18 retained), `next-sanity` 9.12.x (Next-15 compatible, still React 18), `@opennextjs/cloudflare`, Wrangler, Cloudflare Workers + R2 (incremental cache).
 
 **Repo:** `POMO-frontend` only.
 
 ## Global Constraints
 
 - Do NOT touch Supabase, auth, realtime, or `focus_session` in this phase. The app must behave identically, just hosted on Workers.
+- **Next.js 15.x, React 18 retained.** Do NOT move to React 19. `next-sanity` moves to 9.12.x (supports Next 15 + React 18); `sanity`/`@sanity/*` bumped only as needed to satisfy its peers, all within Sanity 3.x.
 - `compatibility_date` = `2025-04-01` (satisfies OpenNext's `2024-09-23`+ floor and enables reliable `process.env` population).
 - `compatibility_flags` MUST include `nodejs_compat`.
 - Worker `name` = `pomo-frontend`.
@@ -24,36 +25,52 @@
 
 ---
 
-### Task 1: Bump Next.js to 14.2.x
+### Task 1: Bump Next.js to 15.x (+ Sanity 9.12, fix async params)
 
 **Files:**
-- Modify: `package.json` (`next`, `eslint-config-next` versions)
+- Modify: `package.json` (`next`, `eslint-config-next`, `next-sanity`, `sanity`, `@sanity/vision`)
+- Modify: `src/app/room/[id]/page.tsx` (async `params`)
 
 **Interfaces:**
-- Produces: an app that builds and tests green on Next 14.2.x (prerequisite for the OpenNext adapter, which only supports the latest 14 minors).
+- Produces: an app that builds and tests green on Next 15.x with React 18 retained (prerequisite for the OpenNext adapter, which requires Next ≥ 15.5.24).
 
-- [ ] **Step 1: Pin Next.js and eslint-config-next to latest 14.2.x**
+Note: the branch currently has Next pinned at `14.2.35` (from an earlier revision of this task). This task moves it to 15.x. Keep exact pins for `next`/`eslint-config-next`/`next-sanity` (repo has no committed lockfile); do NOT commit any generated `package-lock.json`.
+
+- [ ] **Step 1: Install Next 15 + Sanity 9.12 (React stays 18)**
 
 ```bash
 cd /Users/llama/Documents/Development/POMO-frontend
-npm install next@^14.2.0 eslint-config-next@^14.2.0
+npm install next@^15.5 eslint-config-next@^15.5 next-sanity@9.12.3 sanity@^3.99 @sanity/vision@^3.99
 ```
+Then exact-pin `next`, `eslint-config-next`, and `next-sanity` in `package.json` (replace any caret with the exact resolved version). Do NOT change `react`/`react-dom` (stay `^18`).
 
-- [ ] **Step 2: Verify the production build passes**
+- [ ] **Step 2: Fix async `params` in the room page** (Next 15 makes `params` a Promise; this is a client component so unwrap with `use`)
+
+```tsx
+import { useEffect, useMemo, useState, use } from "react";
+// ...
+export default ({ params }: { params: Promise<{ id: string }> }) => {
+  const { id } = use(params);
+  // ...
+  const room = id;
+```
+(Replace the old `({ params }: { params: { id: string } })` signature and `const room = params.id;`.)
+
+- [ ] **Step 3: Verify the production build passes**
 
 Run: `npm run build`
-Expected: `next build` completes with "Compiled successfully" and no type errors.
+Expected: "Compiled successfully", no type errors. If Sanity peer-dependency errors appear, bump the specific `@sanity/*` package the error names to a version satisfying `next-sanity@9.12.3`'s peers (all within Sanity 3.x), then rebuild.
 
-- [ ] **Step 3: Verify the existing test suite passes**
+- [ ] **Step 4: Verify the test suite passes**
 
 Run: `npm test`
-Expected: all existing Vitest tests pass (same count as before the bump).
+Expected: 61/61 passing (same as before).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit** (no lockfile)
 
 ```bash
-git add package.json package-lock.json
-git commit -m "chore: bump Next.js to 14.2.x for OpenNext compatibility"
+git add package.json src/app/room/[id]/page.tsx
+git commit -m "chore: bump to Next 15 + next-sanity 9.12 (React 18 retained); async params"
 ```
 
 ---
@@ -237,7 +254,7 @@ This task cannot be run by an agent; it needs your authenticated Cloudflare acco
 
 ## Self-Review
 
-- **Spec coverage:** Implements spec Phase 1 ("App → Workers (OpenNext), Supabase untouched") and Decision #6 (OpenNext + Next 14.2.x bump). No auth/data/realtime changes — matches "Supabase untouched."
+- **Spec coverage:** Implements spec Phase 1 ("App → Workers (OpenNext), Supabase untouched") and Decision #6 (OpenNext; Next bumped to 15.x since the current adapter dropped Next 14 — React 18 retained). No auth/data/realtime changes — matches "Supabase untouched."
 - **Placeholder scan:** `<DATABASE_ID>` etc. not used here; the R2 bucket name is concrete. Task 4 is explicitly manual, not a placeholder.
 - **Type consistency:** Binding names (`ASSETS`, `NEXT_INC_CACHE_R2_BUCKET`, `WORKER_SELF_REFERENCE`) are consistent between `wrangler.jsonc` and the caching override.
 - **Known risk:** if the app uses ISR/`revalidateTag` with Sanity content, on-demand revalidation also needs a queue + tag cache (see spec/OpenNext caching docs); plain SSR works with the R2 incremental cache alone. Verify during Task 3 preview whether any route logs a missing-cache error and, if so, add `doQueue` + `d1NextTagCache` per the OpenNext caching docs before Task 4.
