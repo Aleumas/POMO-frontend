@@ -4,4 +4,5 @@ node_modules
 .env.local
 .open-next
 .dev.vars
+.wrangler
 cloudflare-env.d.ts
