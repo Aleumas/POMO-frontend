@@ -1,7 +1,7 @@
 node_modules
 .next
 .env
-.env.local
+.env*.local
 .open-next
 .dev.vars
 .wrangler
