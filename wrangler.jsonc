@@ -4,6 +4,9 @@
   "name": "pomo-frontend",
   "compatibility_date": "2025-04-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "vars": {
+    "BETTER_AUTH_URL": "https://cordonfocus.com"
+  },
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
