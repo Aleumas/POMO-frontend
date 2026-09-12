@@ -20,10 +20,10 @@ Motivation: single vendor, same-origin auth (no cross-site cookie complexity), a
 
 1. **Topology:** full consolidation — move the Next.js app to Cloudflare Workers so app + auth + D1 are one same-origin Cloudflare deployment.
 2. **Auth methods:** social sign-in only — **Google, Discord, GitHub**. No email/password, no magic link/OTP, no transactional email.
-3. **Anonymous-first:** keep it. Lazily create an anonymous user on first identity-need; upgrading via a social provider preserves the same user id and focus history (Better Auth anonymous plugin, `onLink: "promote"`).
+3. **Anonymous-first:** keep it. Lazily create an anonymous user on first identity-need; upgrading via a social provider preserves the focus history. Uses Better Auth's released `anonymous({ disableDeleteAnonymousUser, onLinkAccount })` flow: on link Better Auth creates a new user id and fires `onLinkAccount({ anonymousUser, newUser })`, in which we re-point the guest's `focus_session` rows to the new id. (The user id changes on upgrade; the unreleased `onLink: "promote"` in-place option is a future simplification, not used.)
 4. **User/data migration:** none. No real users exist yet; existing focus data is disposable. Clean slate.
 5. **Session recording:** the realtime Worker writes completed sessions **directly to D1** (same D1 bound to the realtime Worker), keeping the existing outbox pattern.
-6. **Next.js:** bump to a current OpenNext-supported version as part of this work.
+6. **Next.js / platform:** deploy via OpenNext (`@opennextjs/cloudflare`); bump Next.js from 14.1.2 to the latest 14.2.x (App Router, React 18 — low-risk minor bump; OpenNext only supports the latest 14 minors). (Cloudflare now recommends `vinext` as its default Next-on-Workers path; OpenNext chosen deliberately because it runs real Next.js and is the safer compatibility bet for the app's Sanity CMS + Spline dependencies.)
 7. **One spec:** the frontend move and the auth+data cutover are designed together (this document), built in phases.
 
 ## Current state (what Supabase provides today)
@@ -63,8 +63,8 @@ Browser ──cookies (same-origin)──► App Worker (Next.js + Better Auth) 
 - **Library:** Better Auth ≥ 1.5 (native D1 support: pass the D1 binding as `database`; auto-detected Kysely dialect; no interactive transactions → uses `batch()`). Auth instance created per request (env is request-scoped on Workers).
 - **Providers:** Google, Discord, GitHub (built-in social providers). Client ids/secrets in Worker secrets. Redirect URIs = `<app-origin>/api/auth/callback/<provider>`.
 - **Plugins:**
-  - `anonymous({ onLink: "promote" })` — upgrade the anon user in place on first social sign-in: same id, sessions re-pointed, `focus_session` rows stay valid.
-  - `jwt` — exposes `/api/auth/token` (mint a JWKS-verifiable JWT for the realtime Worker) and `/api/auth/jwks`.
+  - `anonymous({ disableDeleteAnonymousUser: true, onLinkAccount })` — on first social sign-in, Better Auth creates a new user; `onLinkAccount({ anonymousUser, newUser })` re-points the guest's `focus_session` rows (D1 `UPDATE ... SET user_id = newUser.id WHERE user_id = anonymousUser.id`) then the anon user is cleaned up. History preserved; id changes.
+  - `jwt` — exposes `/api/auth/token` (client `authClient.token()` mints a JWKS-verifiable JWT for the realtime Worker) and `/api/auth/jwks`. Verify empirically that anonymous sessions can mint a JWT (docs don't state a restriction, but it's unconfirmed).
 - **Anonymous-first behavior:** create the anon user **lazily** the first time identity is needed (e.g. joining a room), not on every page load, to avoid junk users. This is a deliberate improvement over the current on-load `signInAnonymously`.
 - **Sessions:** Better Auth cookie sessions. A Next middleware handles session/route needs; the current Supabase middleware and `@supabase/ssr` usage are removed.
 - **No** email/password, password reset, update-password, or email verification flows, and **no** transactional email provider.
@@ -119,6 +119,8 @@ Browser ──cookies (same-origin)──► App Worker (Next.js + Better Auth) 
 - **OAuth setup.** Three provider apps must be registered with correct redirect URIs/secrets on the final app origin; a wrong origin breaks callback. Track domain as a deploy parameter.
 - **D1 limitations.** No interactive transactions (Better Auth uses `batch()`); SQLite semantics for the stats query (integer division for minutes, timezone handled via client `week_start`).
 - **JWKS fetch.** Realtime Worker must point JWKS at the app origin (a different origin) and cache it; never self-fetch.
+- **Better Auth on Workers wiring (highest unverified risk).** The auth instance must be built **per request** from the request-scoped `env` (via `getCloudflareContext({ async: true })`) — no module-level singleton — with `secret`/`baseURL` read off `env` (no `process.env` on Workers). `nextCookies()` must be the last plugin so server-action cookies are set. `nodejs_compat` is required (AsyncLocalStorage). Set `compatibility_date` ≥ `2025-04-01` for reliable `process.env` population. Test cookie-setting on sign-in end-to-end early.
+- **D1 schema migration is not CLI-driven.** The Better Auth CLI can't reach D1 (request-scoped). Generate the schema and apply it via a protected `getMigrations(auth.options)` route (from `better-auth/db/migration`) or by applying generated SQL with `wrangler d1 execute`. Applies to `user`/`session`/`account`/`verification`/`jwks` plus our `focus_session` table.
 
 ## Out of scope / non-goals
 
