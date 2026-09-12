@@ -200,14 +200,14 @@ export default ({ params }: { params: Promise<{ id: string }> }) => {
                 <div className="mt-3 flex flex-col gap-3">
                   <Button
                     variant="outline"
-                    className="border-hairline text-ink hover:bg-ink/5 w-full rounded-full bg-transparent font-semibold"
+                    className="border-hairline text-ink hover:bg-ink/5 hover:text-ink w-full rounded-full bg-transparent font-semibold"
                     onClick={() => router.push("/statistics")}
                   >
                     Statistics
                   </Button>
                   <Button
                     variant="outline"
-                    className="border-hairline text-ink hover:bg-ink/5 w-full rounded-full bg-transparent font-semibold"
+                    className="border-hairline text-ink hover:bg-ink/5 hover:text-ink w-full rounded-full bg-transparent font-semibold"
                     onClick={() => router.push("/achievements")}
                   >
                     Achievements
@@ -251,7 +251,7 @@ export default ({ params }: { params: Promise<{ id: string }> }) => {
               <Button
                 variant="outline"
                 size="icon"
-                className="border-hairline text-ink hover:bg-ink/5 rounded-full bg-transparent"
+                className="border-hairline text-ink hover:bg-ink/5 hover:text-ink rounded-full bg-transparent"
                 onClick={() => {
                   navigator.clipboard.writeText(window.location.href);
                   toast.success("Link copied to clipboard!");

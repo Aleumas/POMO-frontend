@@ -90,7 +90,7 @@ export default () => {
         <h2 className="text-ink text-2xl font-bold">Milestones</h2>
         <Button
           variant="outline"
-          className="border-hairline text-ink hover:bg-ink/5 rounded-full bg-transparent font-semibold"
+          className="border-hairline text-ink hover:bg-ink/5 hover:text-ink rounded-full bg-transparent font-semibold"
           onClick={() => router.back()}
         >
           Back
