@@ -228,7 +228,7 @@ export default ({ params }: { params: Promise<{ id: string }> }) => {
             </Sheet>
             <div className="m-5 flex items-center gap-2">
               <span className="text-ink-muted bg-ink/5 font-firaCode rounded-full px-3 py-1 text-xs tracking-widest uppercase">
-                Room {room.slice(0, 8)}
+                Room {room.slice(0, 3)}
               </span>
               <span
                 className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
