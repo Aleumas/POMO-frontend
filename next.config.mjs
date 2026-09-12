@@ -1,8 +1,22 @@
+import { fileURLToPath } from "url";
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
+// @splinetool/react-spline v4 ships pure ESM with only an `import` condition
+// (no `require`/`default` fallback) in its `exports` map, which webpack's
+// resolver rejects ("Package path . is not exported"). `import.meta.resolve`
+// respects the `import` condition (unlike webpack's resolver here), so use
+// it to get the real dist path and alias straight to it.
+const splineEntry = fileURLToPath(
+  import.meta.resolve("@splinetool/react-spline"),
+);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   trailingSlash: false,
+  webpack: (config) => {
+    config.resolve.alias["@splinetool/react-spline"] = splineEntry;
+    return config;
+  },
   async headers() {
     return [];
   },
