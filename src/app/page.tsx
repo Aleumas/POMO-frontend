@@ -1,8 +1,12 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import Spline from "@splinetool/react-spline";
+import dynamic from "next/dynamic";
 import { v4 as uuidv4 } from "uuid";
+
+const Spline = dynamic(() => import("@splinetool/react-spline"), {
+  ssr: false,
+});
 
 export default () => {
   const router = useRouter();

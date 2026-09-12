@@ -9,12 +9,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import Spline from "@splinetool/react-spline";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { RWebShare } from "react-web-share";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
 import { useFocusStats } from "@/hooks/useFocusStats";
+
+const Spline = dynamic(() => import("@splinetool/react-spline"), {
+  ssr: false,
+});
 
 const hiddenMilestoneMedel =
   "https://prod.spline.design/G9KwJ8ipTOZ3kUOc/scene.splinecode";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Share2Icon } from "@radix-ui/react-icons";
@@ -49,10 +49,11 @@ const baseUrl =
 const getToken = async () =>
   (await createClient().auth.getSession()).data.session?.access_token ?? null;
 
-export default ({ params }: { params: { id: string } }) => {
+export default ({ params }: { params: Promise<{ id: string }> }) => {
+  const { id } = use(params);
   const { user, displayName, avatarUrl, isAnonymous } = useCurrentUser();
   const router = useRouter();
-  const room = params.id;
+  const room = id;
 
   const identity = useMemo(
     () => (user?.id ? { displayName, avatar: avatarUrl, getToken } : null),
