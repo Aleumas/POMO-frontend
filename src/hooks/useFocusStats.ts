@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/providers/AuthContext";
-import { createClient } from "@/lib/supabase/client";
 import { fetchFocusStats, type FocusStats } from "@/lib/focus-stats";
 
 function hasStringMessage(e: unknown): e is { message: string } {
@@ -37,7 +36,7 @@ export function useFocusStats() {
 
     let cancelled = false;
 
-    fetchFocusStats(createClient())
+    fetchFocusStats()
       .then((result) => {
         if (!cancelled) {
           setStats(result);

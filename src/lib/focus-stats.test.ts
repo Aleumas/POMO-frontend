@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
-import { fetchFocusStats, startOfWeek } from "@/lib/focus-stats";
+import { describe, it, expect } from "vitest";
+import { computeFocusStats, startOfWeek } from "@/lib/focus-stats";
 
 describe("startOfWeek", () => {
   it("returns Monday 00:00 for a midweek date", () => {
@@ -24,52 +24,26 @@ describe("startOfWeek", () => {
   });
 });
 
-describe("fetchFocusStats", () => {
-  it("calls the rpc with the local week start and maps the row", async () => {
-    const single = vi.fn().mockResolvedValue({
-      data: { total_sessions: 12, total_minutes: 300, sessions_this_week: 3 },
-      error: null,
-    });
-    const rpc = vi.fn().mockReturnValue({ single });
-    const now = new Date(2026, 8, 9, 15, 30);
-
-    const stats = await fetchFocusStats({ rpc }, now);
-
-    expect(rpc).toHaveBeenCalledWith("get_focus_stats", {
-      week_start: new Date(2026, 8, 7, 0, 0, 0, 0).toISOString(),
-    });
-    expect(stats).toEqual({
-      totalSessions: 12,
-      totalMinutes: 300,
-      sessionsThisWeek: 3,
+describe("computeFocusStats", () => {
+  it("aggregates totals and this-week count", () => {
+    const weekStart = new Date("2026-09-07T00:00:00.000Z");
+    const rows = [
+      { duration_seconds: 1500, completed_at: "2026-09-08T10:00:00.000Z" },
+      { duration_seconds: 1500, completed_at: "2026-09-01T10:00:00.000Z" },
+      { duration_seconds: 300, completed_at: "2026-09-09T10:00:00.000Z" },
+    ];
+    expect(computeFocusStats(rows, weekStart)).toEqual({
+      totalSessions: 3,
+      totalMinutes: 55, // (1500+1500+300)/60 = 55
+      sessionsThisWeek: 2,
     });
   });
 
-  it("coerces string bigints to numbers", async () => {
-    const rpc = vi.fn().mockReturnValue({
-      single: vi.fn().mockResolvedValue({
-        data: {
-          total_sessions: "7",
-          total_minutes: "175",
-          sessions_this_week: "0",
-        },
-        error: null,
-      }),
-    });
-
-    expect(await fetchFocusStats({ rpc })).toEqual({
-      totalSessions: 7,
-      totalMinutes: 175,
+  it("handles empty history", () => {
+    expect(computeFocusStats([], new Date())).toEqual({
+      totalSessions: 0,
+      totalMinutes: 0,
       sessionsThisWeek: 0,
     });
-  });
-
-  it("throws the supabase error", async () => {
-    const error = new Error("permission denied");
-    const rpc = vi.fn().mockReturnValue({
-      single: vi.fn().mockResolvedValue({ data: null, error }),
-    });
-
-    await expect(fetchFocusStats({ rpc })).rejects.toBe(error);
   });
 });

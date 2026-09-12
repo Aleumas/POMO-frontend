@@ -1,16 +1,10 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 export type FocusStats = {
   totalSessions: number;
   totalMinutes: number;
   sessionsThisWeek: number;
 };
 
-type FocusStatsRow = {
-  total_sessions: number | string;
-  total_minutes: number | string;
-  sessions_this_week: number | string;
-};
+type FocusRow = { duration_seconds: number; completed_at: string };
 
 export function startOfWeek(date: Date): Date {
   const result = new Date(date);
@@ -21,23 +15,24 @@ export function startOfWeek(date: Date): Date {
   return result;
 }
 
-export async function fetchFocusStats(
-  supabase: Pick<SupabaseClient, "rpc">,
-  now: Date = new Date(),
-): Promise<FocusStats> {
-  const { data, error } = await supabase
-    .rpc("get_focus_stats", { week_start: startOfWeek(now).toISOString() })
-    .single();
-
-  if (error) {
-    throw error;
+export function computeFocusStats(rows: FocusRow[], weekStart: Date): FocusStats {
+  const weekStartMs = weekStart.getTime();
+  let totalSeconds = 0;
+  let sessionsThisWeek = 0;
+  for (const row of rows) {
+    totalSeconds += row.duration_seconds;
+    if (new Date(row.completed_at).getTime() >= weekStartMs) sessionsThisWeek += 1;
   }
-
-  const row = data as FocusStatsRow;
-
   return {
-    totalSessions: Number(row.total_sessions),
-    totalMinutes: Number(row.total_minutes),
-    sessionsThisWeek: Number(row.sessions_this_week),
+    totalSessions: rows.length,
+    totalMinutes: Math.floor(totalSeconds / 60),
+    sessionsThisWeek,
   };
+}
+
+export async function fetchFocusStats(now: Date = new Date()): Promise<FocusStats> {
+  const weekStart = startOfWeek(now).toISOString();
+  const res = await fetch(`/api/stats?weekStart=${encodeURIComponent(weekStart)}`);
+  if (!res.ok) throw new Error(`stats request failed: ${res.status}`);
+  return (await res.json()) as FocusStats;
 }

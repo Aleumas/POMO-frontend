@@ -7,13 +7,6 @@ vi.mock("@/app/providers/AuthContext", () => ({
   useAuth: useAuthMock,
 }));
 
-const { createClientMock } = vi.hoisted(() => ({
-  createClientMock: vi.fn(),
-}));
-vi.mock("@/lib/supabase/client", () => ({
-  createClient: createClientMock,
-}));
-
 const { fetchFocusStatsMock } = vi.hoisted(() => ({
   fetchFocusStatsMock: vi.fn(),
 }));
@@ -30,7 +23,6 @@ import { useFocusStats } from "@/hooks/useFocusStats";
 function setUser(id: string | null) {
   useAuthMock.mockReturnValue({
     user: id ? { id } : null,
-    session: null,
     loading: false,
   });
 }
@@ -47,9 +39,7 @@ function deferred<T>() {
 
 beforeEach(() => {
   useAuthMock.mockReset();
-  createClientMock.mockReset();
   fetchFocusStatsMock.mockReset();
-  createClientMock.mockReturnValue({});
 });
 
 describe("useFocusStats", () => {
