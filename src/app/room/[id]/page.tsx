@@ -36,7 +36,7 @@ import {
 } from "@/lib/room-protocol";
 import { formatTime, progressPercent, toTimerState } from "@/lib/timer-view";
 import { playChime } from "@/lib/chime";
-import { createClient } from "@/lib/supabase/client";
+import { authClient, ensureAnonUser } from "@/lib/auth-client";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRoom } from "@/hooks/useRoom";
 import { useServerNow } from "@/hooks/useServerNow";
@@ -46,8 +46,11 @@ const baseUrl =
     ? process.env.NEXT_PUBLIC_DEVELOPMENT_BASE_URL
     : process.env.NEXT_PUBLIC_PRODUCTION_BASE_URL;
 
-const getToken = async () =>
-  (await createClient().auth.getSession()).data.session?.access_token ?? null;
+const getToken = async () => {
+  await ensureAnonUser(); // lazy: create an anon session on first room join
+  const { data } = await authClient.token({ query: {} });
+  return data?.token ?? null;
+};
 
 export default ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = use(params);
