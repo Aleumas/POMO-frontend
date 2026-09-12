@@ -2,3 +2,6 @@ node_modules
 .next
 .env
 .env.local
+.open-next
+.dev.vars
+cloudflare-env.d.ts
