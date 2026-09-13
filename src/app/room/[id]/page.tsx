@@ -88,7 +88,7 @@ export default ({ params }: { params: Promise<{ id: string }> }) => {
   const anyRunning =
     timer.status === "running" ||
     others.some((p) => p.timer.status === "running");
-  const now = useServerNow(offsetMs, anyRunning);
+  const now = useServerNow(offsetMs, anyRunning, timer.endsAt);
   const timerState = toTimerState(timer, now);
   const progress = progressPercent(timer, now);
   const isWork = timer.phase === "work";
@@ -305,6 +305,16 @@ export default ({ params }: { params: Promise<{ id: string }> }) => {
                           className="bg-accent-work hover:bg-accent-work/90 flex-1 rounded-full font-semibold text-white"
                         >
                           Resume
+                        </Button>
+                      )}
+                      {!isWork && (
+                        <Button
+                          disabled={controlsDisabled}
+                          onClick={() => send({ type: "skip" })}
+                          variant="outline"
+                          className="border-hairline text-ink hover:bg-ink/5 hover:text-ink flex-1 rounded-full bg-transparent font-semibold"
+                        >
+                          Skip break
                         </Button>
                       )}
                       <Button

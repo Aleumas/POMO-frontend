@@ -23,6 +23,7 @@ export type Intent =
   | { type: "pause" }
   | { type: "resume" }
   | { type: "stop" }
+  | { type: "skip" }
   | { type: "setPreset"; phase: Phase; durationMs: number };
 
 export type ServerMessage =
