@@ -22,5 +22,11 @@
     "medal": "https://draft.spline.design/ta4A1XZ7CqUBOffa/scene.splinecode",
     "image": "https://pomo-awards.s3.us-east-2.amazonaws.com/100-sessions.png",
     "value": 100
+  },
+  {
+    "title": "150 sessions",
+    "description": "Platinum-level focus — a testament to relentless consistency!",
+    "requirement": "Complete a total of 150 Pomodoro sessions.",
+    "value": 150
   }
 ]

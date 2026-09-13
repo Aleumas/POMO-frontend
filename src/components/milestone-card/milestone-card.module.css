@@ -1,0 +1,107 @@
+.wrapper {
+  height: 100%;
+  perspective: 800px;
+}
+
+.tilt {
+  height: 100%;
+  transition: transform 0.2s ease-out;
+}
+.tilt:hover {
+  transform: rotateX(var(--x-rotation)) rotateY(var(--y-rotation)) scale(1.03);
+}
+
+/* Same background treatment for every rarity -- a light wash of the
+   card's own accent color rather than flat white, the way the Arc
+   card hangs its whole palette off one identity color. Only the mix
+   percentage is fixed; the color itself comes from --accent. */
+.card {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--accent, #888) 6%, white);
+  border: 1px solid #ececec;
+  box-shadow: 0 4px 8px -6px rgba(0, 0, 0, 0.08);
+}
+
+.figure {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.art {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+
+/* The hero graphic: large and centered in the card's main area. */
+.heroIcon {
+  position: relative;
+  width: 45%;
+  aspect-ratio: 1;
+}
+.heroIcon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Corner glare anchored at the cursor position (--x/--y). A bright
+   sheen, since darkening reads wrong on a light card. */
+.glare {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+}
+.tilt:hover .glare {
+  opacity: 1;
+  background: radial-gradient(
+    at var(--x, 50%) var(--y, 50%),
+    rgba(255, 255, 255, 0.25) 0%,
+    transparent 60%
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt:hover {
+    transform: none;
+  }
+  .glare {
+    display: none;
+  }
+}
+
+.content {
+  padding: 0.9rem 1.1rem 1rem;
+}
+
+/* Locked state: not-yet-earned achievement. Card desaturates and the
+   hero graphic blurs into an indistinct silhouette, but the title and
+   subtitle stay readable so the player still knows what they're
+   working toward. */
+.card.locked {
+  filter: grayscale(1);
+}
+.locked .heroIcon {
+  filter: blur(5px);
+  opacity: 0.5;
+}
+
+.subtitle {
+  margin-top: 0.2rem;
+  font-size: 1rem;
+  color: #6b7280;
+}
+
+.footer {
+  margin-top: 0.75rem;
+}

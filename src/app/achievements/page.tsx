@@ -1,27 +1,34 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import milestones from "../../../public/achievements/milestones/file.json";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { RWebShare } from "react-web-share";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
 import { useFocusStats } from "@/hooks/useFocusStats";
+import {
+  MilestoneCard,
+  rarityForSessionCount,
+} from "@/components/milestone-card";
+import { SproutIcon } from "@/components/milestone-card/SproutIcon";
+import { LeafIcon } from "@/components/milestone-card/LeafIcon";
+import { TreeIcon } from "@/components/milestone-card/TreeIcon";
+import { MatureTreeIcon } from "@/components/milestone-card/MatureTreeIcon";
 
-const Spline = dynamic(() => import("@splinetool/react-spline"), {
-  ssr: false,
-});
+interface Milestone {
+  title: string;
+  description: string;
+  requirement: string;
+  value: number;
+  image?: string;
+}
 
-const hiddenMilestoneMedel =
-  "https://prod.spline.design/G9KwJ8ipTOZ3kUOc/scene.splinecode";
+function iconForSessionCount(value: number) {
+  if (value >= 150) return <MatureTreeIcon />;
+  if (value >= 100) return <TreeIcon />;
+  if (value >= 50) return <LeafIcon />;
+  return <SproutIcon />;
+}
 
 export default () => {
   const router = useRouter();
@@ -29,49 +36,35 @@ export default () => {
   const isLoading = stats === null && error === null;
   const totalSessionCount = stats?.totalSessions ?? 0;
 
-  const MilestoneCard = ({ milestone }): JSX.Element => {
+  const renderMilestoneCard = (milestone: Milestone) => {
+    const locked = totalSessionCount < milestone.value;
+    const rarity = rarityForSessionCount(milestone.value);
+
     return (
       <div className="shink-0 flex h-96 w-64">
-        {totalSessionCount < milestone.value ? (
-          <Card className="bg-surface border-hairline flex h-full w-64 flex-col justify-between p-6">
-            <CardTitle className="text-ink text-center">
-              {milestone.title}
-            </CardTitle>
-            <CardContent className="h-48">
-              <Spline scene={hiddenMilestoneMedel} />
-            </CardContent>
-            <CardFooter className="h-20">
-              <h2 className="text-ink-muted text-center text-lg font-medium">
-                {milestone.requirement}
-              </h2>
-            </CardFooter>
-          </Card>
-        ) : (
-          <Card className="bg-surface border-hairline flex h-full w-64 flex-col justify-between">
-            <CardHeader>
-              <CardTitle className="text-ink">{milestone.title}</CardTitle>
-              <CardDescription className="text-ink-muted">
-                {milestone.description}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="h-52">
-              <Spline scene={milestone.medal} />
-            </CardContent>
-            <CardFooter>
+        <MilestoneCard
+          title={milestone.title}
+          subtitle={locked ? milestone.requirement : milestone.description}
+          art=""
+          rarity={rarity}
+          icon={iconForSessionCount(milestone.value)}
+          locked={locked}
+          footer={
+            !locked && (
               <RWebShare
                 data={{
                   text: "A great pomodoro achievement was made!",
-                  url: milestone.image,
                   title: milestone.title,
+                  ...(milestone.image ? { url: milestone.image } : {}),
                 }}
               >
                 <Button className="bg-accent-work hover:bg-accent-work/90 w-full rounded-full font-semibold text-white">
                   Share
                 </Button>
               </RWebShare>
-            </CardFooter>
-          </Card>
-        )}
+            )
+          }
+        />
       </div>
     );
   };
@@ -119,7 +112,7 @@ export default () => {
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5 }}
                   >
-                    <MilestoneCard milestone={milestone} />
+                    {renderMilestoneCard(milestone)}
                   </motion.div>
                 )}
               </AnimatePresence>

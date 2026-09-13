@@ -15,7 +15,7 @@ const spaceGrotesk = Space_Grotesk({
 export default function App({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <html>
+      <html suppressHydrationWarning>
         <body className={`${spaceGrotesk.variable} font-sans`}>
           <ThemeProvider
             attribute="class"
