@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import milestones from "../../../public/achievements/milestones/file.json";
 import { useRouter } from "next/navigation";
 import { RWebShare } from "react-web-share";
-import { Skeleton } from "@/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
 import { useFocusStats } from "@/hooks/useFocusStats";
 import {
@@ -70,10 +69,11 @@ export default () => {
   };
 
   const MilestoneSkeletonCard = () => {
+    // Static placeholder using the app's own light tokens (not shadcn's
+    // theme-variable `bg-muted`, which resolves dark under the default
+    // dark ThemeProvider and looked out of place on this light page).
     return (
-      <div className="shink-0 h-96 w-64">
-        <Skeleton className="flex h-full w-64 flex-col justify-between p-3" />
-      </div>
+      <div className="shink-0 border-hairline bg-surface h-96 w-64 rounded-3xl border" />
     );
   };
 
